@@ -118,6 +118,20 @@ namespace WaxIPTV.Services
 
             raw = raw.Trim();
 
+            // Many XMLTV feeds now provide ISO 8601 timestamps such as
+            // "2024-05-03T20:00:00Z" or "2024-05-03T20:00:00+02:00".  These
+            // formats are not handled by the original custom parsing logic
+            // below, so attempt a standard DateTimeOffset parse first.  If
+            // successful we normalise to UTC and return immediately.
+            if (DateTimeOffset.TryParse(
+                    raw,
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                    out var isoDto))
+            {
+                return isoDto;
+            }
+
             // Separate date/time part and timezone part
             string datePart = raw;
             string tzPart = string.Empty;
