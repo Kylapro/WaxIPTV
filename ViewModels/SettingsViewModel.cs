@@ -45,9 +45,9 @@ namespace WaxIPTV.ViewModels
 
         // ----- Friendly Theme fields -----
         [ObservableProperty]
-        private string bgHex = "#0B0B0F";
+        private string bgHex = "#FFFFFF";
         [ObservableProperty]
-        private string textHex = "#FFFFFF";
+        private string textHex = "#0B0B0F";
         [ObservableProperty]
         private string accentHex = "#5B8CFF";
         [ObservableProperty]
