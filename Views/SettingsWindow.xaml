@@ -1,0 +1,395 @@
+<Window x:Class="WaxIPTV.Views.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:theming="clr-namespace:WaxIPTV.Theming"
+        Title="WaxIPTV – Setup"
+        Height="600"
+        Width="880"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource BgBrush}"
+        Foreground="{DynamicResource TextBrush}"
+        Icon="pack://application:,,,/WaxIPTVIcon.ico">
+    <!--
+        Startup settings window.  This dialog is shown when the
+        application launches.  It allows the user to choose which
+        external player to use (mpv or VLC), pick the paths to the
+        player executables, specify the playlist (M3U) and EPG
+        (XMLTV) sources, and edit the theme JSON.  The view is
+        designed for data binding against the SettingsViewModel.
+    -->
+    <!--
+        Define resources used by the theme editor.  The HexToBrushConverter
+        converts a hex string into a SolidColorBrush so that small colour
+        swatches can be rendered next to each TextBox.  The SwatchButton
+        style defines a uniform size and rounded outline for palette
+        buttons in the colour chooser.
+    -->
+    <Window.Resources>
+        <theming:HexToBrushConverter x:Key="HexToBrush"/>
+        <!-- Simple swatch style -->
+        <Style x:Key="SwatchButton" TargetType="Button">
+            <Setter Property="Width" Value="28"/>
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="Margin" Value="0,0,6,0"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border CornerRadius="6"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Converter to toggle visibility based on a boolean property -->
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+    </Window.Resources>
+
+    <DockPanel>
+        <!-- Header -->
+        <TextBlock DockPanel.Dock="Top"
+                   Text="Initial Setup"
+                   FontSize="18"
+                   FontWeight="Bold"
+                   Margin="12"/>
+        <!-- Tab control containing general and theme tabs -->
+        <TabControl Margin="12" Background="{DynamicResource BgBrush}">
+            <TabItem Header="General">
+                <Grid Margin="8" Background="{DynamicResource BgBrush}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/> <!-- player selection -->
+                        <RowDefinition Height="Auto"/> <!-- mpv path -->
+                        <RowDefinition Height="Auto"/> <!-- vlc path -->
+                        <RowDefinition Height="Auto"/> <!-- playlist -->
+                        <RowDefinition Height="Auto"/> <!-- EPG -->
+                        <RowDefinition Height="Auto"/> <!-- EPG actions -->
+                        <RowDefinition Height="*"/>  <!-- spacer row -->
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="170"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Player selection -->
+                    <TextBlock Text="Player"
+                               Grid.Row="0" Grid.Column="0"
+                               Margin="0,0,8,8"
+                               VerticalAlignment="Center"/>
+                    <ComboBox Grid.Row="0" Grid.Column="1"
+                              Margin="0,0,8,8"
+                              Background="{DynamicResource DropdownBrush}"
+                              ItemsSource="{Binding PlayerOptions}"
+                              SelectedItem="{Binding Player, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+
+                    <!-- mpv path -->
+                    <TextBlock Text="mpv path"
+                               Grid.Row="1" Grid.Column="0"
+                               Margin="0,0,8,8"
+                               VerticalAlignment="Center"/>
+                    <TextBox Grid.Row="1" Grid.Column="1"
+                             Margin="0,0,8,8"
+                             Text="{Binding MpvPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                    <Button Grid.Row="1" Grid.Column="2"
+                            Margin="0,0,0,8"
+                            Padding="12,6"
+                            Content="Browse…"
+                            Command="{Binding BrowseMpvCommand}"/>
+
+                    <!-- VLC path -->
+                    <TextBlock Text="VLC path"
+                               Grid.Row="2" Grid.Column="0"
+                               Margin="0,0,8,8"
+                               VerticalAlignment="Center"/>
+                    <TextBox Grid.Row="2" Grid.Column="1"
+                             Margin="0,0,8,8"
+                             Text="{Binding VlcPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                    <Button Grid.Row="2" Grid.Column="2"
+                            Margin="0,0,0,8"
+                            Padding="12,6"
+                            Content="Browse…"
+                            Command="{Binding BrowseVlcCommand}"/>
+
+                    <!-- Playlist URL or file -->
+                    <TextBlock Text="Playlist URL or file"
+                               Grid.Row="3" Grid.Column="0"
+                               Margin="0,0,8,8"
+                               VerticalAlignment="Center"/>
+                    <TextBox Grid.Row="3" Grid.Column="1"
+                             Margin="0,0,8,8"
+                             Text="{Binding PlaylistUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                    <Button Grid.Row="3" Grid.Column="2"
+                            Margin="0,0,0,8"
+                            Padding="12,6"
+                            Content="Browse…"
+                            Command="{Binding BrowsePlaylistCommand}"/>
+
+                    <!-- EPG URL or file -->
+                    <TextBlock Text="EPG (XMLTV) URL or file"
+                               Grid.Row="4" Grid.Column="0"
+                               Margin="0,0,8,8"
+                               VerticalAlignment="Center"/>
+                    <TextBox Grid.Row="4" Grid.Column="1"
+                             Margin="0,0,8,8"
+                             Text="{Binding XmltvUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                    <Button Grid.Row="4" Grid.Column="2"
+                            Margin="0,0,0,8"
+                            Padding="12,6"
+                            Content="Browse…"
+                            Command="{Binding BrowseEpgCommand}"/>
+
+                    <!-- EPG management buttons -->
+                    <StackPanel Grid.Row="5" Grid.ColumnSpan="3" Orientation="Horizontal" Margin="0,6,0,0">
+                        <Button Content="Download EPG"
+                                ToolTip="Download and cache the EPG file locally"
+                                Command="{Binding DownloadEpgCommand}"/>
+                        <!-- Refresh only the playlist without reloading EPG -->
+                        <Button Content="Refresh playlist"
+                                Margin="6,0,0,0"
+                                ToolTip="Reload the playlist now without refreshing the EPG"
+                                Command="{Binding RefreshPlaylistCommand}"/>
+                    </StackPanel>
+                    <!-- Spacer row for expansion and EPG download progress -->
+                    <StackPanel Grid.Row="6" Grid.ColumnSpan="3">
+                        <!-- Progress bar showing EPG download status.  It becomes
+                             visible while the download is running and hides
+                             automatically when complete.  The value is
+                             updated via the SettingsViewModel. -->
+                        <ProgressBar Height="4"
+                                     Margin="0,6,0,0"
+                                     IsIndeterminate="True"
+                                     Visibility="{Binding IsEpgDownloading, Converter={StaticResource BoolToVis}}"/>
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+            <TabItem Header="Theme">
+                <!-- Friendly theme editor with live preview.  Users can choose preset
+                     schemes, tweak individual colours, adjust typography and shape
+                     tokens and see their changes reflected immediately in the right
+                     preview pane.  An advanced expander retains access to the raw
+                     JSON for power users who prefer to edit tokens directly. -->
+                <Grid Background="{DynamicResource BgBrush}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2*"/>
+                        <ColumnDefinition Width="3*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Control panel -->
+                    <StackPanel Grid.Column="0" Margin="12" Orientation="Vertical">
+
+                        <TextBlock Text="Theme" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,8"/>
+
+                        <!-- Preset and apply controls -->
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="Dark preset"
+                                    Command="{Binding ApplyPresetCommand}"
+                                    CommandParameter="dark"/>
+                            <Button Content="Light preset"
+                                    Command="{Binding ApplyPresetCommand}"
+                                    CommandParameter="light"/>
+                            <Button Content="Reset"
+                                    Command="{Binding ResetThemeCommand}"/>
+                            <CheckBox Content="Live apply"
+                                      IsChecked="{Binding AutoApplyTheme}"/>
+                            <Button Content="Apply now"
+                                    Command="{Binding ApplyThemeCommand}"/>
+                        </StackPanel>
+
+                        <!-- Colour selectors -->
+                        <GroupBox Header="Colors" Margin="0,8,0,0">
+                            <StackPanel Margin="10">
+                                <!-- Background -->
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="Background" Width="110" VerticalAlignment="Center"/>
+                                    <Border Width="28" Height="28" CornerRadius="6"
+                                            Background="{Binding BgHex, Converter={StaticResource HexToBrush}}"/>
+                                    <TextBox Width="120"
+                                             Text="{Binding BgHex, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Button Style="{StaticResource SwatchButton}" Background="#111318"
+                                                Command="{Binding ChooseBgCommand}"
+                                                CommandParameter="#111318"/>
+                                        <Button Style="{StaticResource SwatchButton}" Background="#0B0B0F"
+                                                Command="{Binding ChooseBgCommand}"
+                                                CommandParameter="#0B0B0F"/>
+                                        <Button Style="{StaticResource SwatchButton}" Background="#FFFFFF"
+                                                Command="{Binding ChooseBgCommand}"
+                                                CommandParameter="#FFFFFF"/>
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <!-- Text -->
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="Text" Width="110" VerticalAlignment="Center"/>
+                                    <Border Width="28" Height="28" CornerRadius="6"
+                                            Background="{Binding TextHex, Converter={StaticResource HexToBrush}}"/>
+                                    <TextBox Width="120"
+                                             Text="{Binding TextHex, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Button Style="{StaticResource SwatchButton}" Background="#FFFFFF"
+                                                Command="{Binding ChooseTextCommand}"
+                                                CommandParameter="#FFFFFF"/>
+                                        <Button Style="{StaticResource SwatchButton}" Background="#E5E7EB"
+                                                Command="{Binding ChooseTextCommand}"
+                                                CommandParameter="#E5E7EB"/>
+                                        <Button Style="{StaticResource SwatchButton}" Background="#0B0B0F"
+                                                Command="{Binding ChooseTextCommand}"
+                                                CommandParameter="#0B0B0F"/>
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <!-- Accent -->
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="Accent" Width="110" VerticalAlignment="Center"/>
+                                    <Border Width="28" Height="28" CornerRadius="6"
+                                            Background="{Binding AccentHex, Converter={StaticResource HexToBrush}}"/>
+                                    <TextBox Width="120"
+                                             Text="{Binding AccentHex, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Button Style="{StaticResource SwatchButton}" Background="#5B8CFF"
+                                                Command="{Binding ChooseAccentCommand}"
+                                                CommandParameter="#5B8CFF"/>
+                                        <Button Style="{StaticResource SwatchButton}" Background="#3D6DFF"
+                                                Command="{Binding ChooseAccentCommand}"
+                                                CommandParameter="#3D6DFF"/>
+                                        <Button Style="{StaticResource SwatchButton}" Background="#22C55E"
+                                                Command="{Binding ChooseAccentCommand}"
+                                                CommandParameter="#22C55E"/>
+                                        <Button Style="{StaticResource SwatchButton}" Background="#F59E0B"
+                                                Command="{Binding ChooseAccentCommand}"
+                                                CommandParameter="#F59E0B"/>
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <!-- Dropdown background -->
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="Dropdown" Width="110" VerticalAlignment="Center"/>
+                                    <Border Width="28" Height="28" CornerRadius="6"
+                                            Background="{Binding DropdownHex, Converter={StaticResource HexToBrush}}"/>
+                                    <TextBox Width="120"
+                                             Text="{Binding DropdownHex, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Button Style="{StaticResource SwatchButton}" Background="#13131A"
+                                                Command="{Binding ChooseDropdownCommand}"
+                                                CommandParameter="#13131A"/>
+                                        <Button Style="{StaticResource SwatchButton}" Background="#F5F6FA"
+                                                Command="{Binding ChooseDropdownCommand}"
+                                                CommandParameter="#F5F6FA"/>
+                                        <Button Style="{StaticResource SwatchButton}" Background="#FFFFFF"
+                                                Command="{Binding ChooseDropdownCommand}"
+                                                CommandParameter="#FFFFFF"/>
+                                    </StackPanel>
+                                </StackPanel>
+
+                            </StackPanel>
+                        </GroupBox>
+
+                        <!-- Typography & shape -->
+                        <GroupBox Header="Typography &amp; Shape">
+                            <StackPanel Margin="10">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="Font" Width="110" VerticalAlignment="Center"/>
+                                    <ComboBox Width="220"
+                                              Background="{DynamicResource DropdownBrush}"
+                                              ItemsSource="{Binding SystemFonts}"
+                                              SelectedItem="{Binding SelectedFontFamily}"
+                                              DisplayMemberPath="Source"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="Base size" Width="110" VerticalAlignment="Center"/>
+                                    <Slider Width="220" Minimum="11" Maximum="22" TickFrequency="1" IsSnapToTickEnabled="True"
+                                            Value="{Binding SizeBase, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <TextBlock Text="{Binding SizeBase, StringFormat=F0}" Width="36" HorizontalAlignment="Right"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="Corner radius" Width="110" VerticalAlignment="Center"/>
+                                    <Slider Width="220" Minimum="0" Maximum="20" TickFrequency="1" IsSnapToTickEnabled="True"
+                                            Value="{Binding Radius, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <TextBlock Text="{Binding Radius, StringFormat=F0}" Width="36"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <!-- Advanced JSON editing -->
+                        <Expander Header="Advanced (raw theme.json)"
+                                  IsExpanded="{Binding ShowAdvancedJson}"
+                                  Margin="0,8,0,0">
+                            <DockPanel>
+                                <Button Content="Apply JSON"
+                                        Command="{Binding ApplyThemeCommand}"
+                                        DockPanel.Dock="Top"
+                                        Margin="0,0,0,6"/>
+                                <TextBox Text="{Binding ThemeJson}"
+                                         AcceptsReturn="True"
+                                         VerticalScrollBarVisibility="Auto"
+                                         MinHeight="140"
+                                         FontFamily="Consolas"/>
+                            </DockPanel>
+                        </Expander>
+                    </StackPanel>
+
+                    <!-- Live preview pane -->
+                    <Border Grid.Column="1"
+                            Margin="12"
+                            Padding="18"
+                            CornerRadius="16"
+                            Background="{DynamicResource BgBrush}">
+                        <StackPanel>
+                            <TextBlock Text="Preview"
+                                       FontSize="18"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextBrush}"/>
+                            <Border Background="{DynamicResource SurfaceBrush}"
+                                    Padding="16"
+                                    CornerRadius="12">
+                                <StackPanel>
+                                    <TextBlock Text="Channel Title"
+                                               FontSize="{DynamicResource FontSizeBase}"
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontFamily="{DynamicResource FontFamilyBase}"/>
+                                    <TextBlock Text="Muted text example"
+                                               Foreground="{DynamicResource MutedTextBrush}"/>
+                                    <WrapPanel>
+                                        <Button Content="Primary"
+                                                Padding="10,6"
+                                                Background="{DynamicResource AccentBrush}"
+                                                Foreground="White"
+                                                BorderThickness="0"/>
+                                        <Button Content="Hover"
+                                                Padding="10,6"
+                                                Background="{DynamicResource AccentHoverBrush}"
+                                                BorderBrush="{DynamicResource AccentBrush}"/>
+                                        <Button Content="Selection"
+                                                Padding="10,6"
+                                                Background="{DynamicResource AccentSelectionBrush}"
+                                                BorderBrush="{DynamicResource AccentBrush}"/>
+                                    </WrapPanel>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </TabItem>
+        </TabControl>
+        <!-- Footer buttons -->
+        <StackPanel Orientation="Horizontal"
+                    DockPanel.Dock="Bottom"
+                    HorizontalAlignment="Right"
+                    Margin="12">
+            <Button Content="Cancel"
+                    Padding="16,8"
+                    Margin="0,0,8,0"
+                    Command="{Binding CancelCommand}"
+                    CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}"/>
+            <Button Content="Save &amp; Continue"
+                    Padding="16,8"
+                    IsDefault="True"
+                    Command="{Binding SaveAndCloseCommand}"
+                    CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}"/>
+        </StackPanel>
+    </DockPanel>
+</Window>

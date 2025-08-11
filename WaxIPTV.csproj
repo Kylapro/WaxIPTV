@@ -9,11 +9,17 @@
     <RootNamespace>WaxIPTV</RootNamespace>
     <AssemblyName>WaxIPTV</AssemblyName>
     <!-- Single-file publishing and trimming are configured at publish time using CLI parameters. -->
+    <!-- Specify the application icon so Windows uses our custom icon in the executable
+         and taskbar.  The file is included in the project root and converted from
+         the provided PNG. -->
+    <ApplicationIcon>WaxIPTVIcon.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <!-- System.Text.Json is available inbox with .NET; no explicit package reference needed. -->
     <!-- The SQLite package is optional; remove if not needed for MVP -->
     <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.3" />
+    <!-- Include the custom application icon file as a resource so it can be referenced in XAML -->
+    <Resource Include="WaxIPTVIcon.ico" />
   </ItemGroup>
 </Project>

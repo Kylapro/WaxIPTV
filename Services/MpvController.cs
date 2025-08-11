@@ -84,6 +84,35 @@ namespace WaxIPTV.Services
         }
 
         /// <summary>
+        /// Indicates whether the mpv process is currently running.  This
+        /// property returns true when the underlying process has been
+        /// launched and has not yet exited.  Consumers can use this
+        /// information to decide whether to call <see cref="LoadAsync"/>
+        /// or <see cref="StartAsync"/>.
+        /// </summary>
+        public bool IsRunning => _proc != null && !_proc.HasExited;
+
+        /// <summary>
+        /// Loads a new media URL into the existing mpv instance without
+        /// spawning a new process.  When mpv is running, this method
+        /// issues the "loadfile" command with the "replace" option,
+        /// instructing mpv to switch playback to the specified URL.
+        /// If mpv is not running, this method completes immediately
+        /// without taking any action; callers should call
+        /// <see cref="StartAsync"/> instead for the initial playback.
+        /// </summary>
+        /// <param name="url">The media URL to load into mpv.</param>
+        /// <param name="ct">A cancellation token for the operation.</param>
+        public Task LoadAsync(string url, CancellationToken ct = default)
+        {
+            if (!IsRunning)
+            {
+                return Task.CompletedTask;
+            }
+            return SendAsync(new { command = new object[] { "loadfile", url, "replace" } }, ct);
+        }
+
+        /// <summary>
         /// Serialises and sends a JSON payload over the IPC pipe.
         /// </summary>
         private async Task SendAsync(object payload, CancellationToken ct)

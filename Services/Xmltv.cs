@@ -1,98 +1,189 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.Xml.Linq;
+using System.IO;
+using System.Xml;
 using WaxIPTV.Models;
 
 namespace WaxIPTV.Services
 {
     /// <summary>
-    /// Utilities for parsing XMLTV data (EPG).  Provides methods to extract channel names
-    /// and programme entries from an XMLTV document.  All times are converted to UTC.
+    /// Utilities for parsing XMLTV data (EPG).  This implementation uses a streaming
+    /// <see cref="XmlReader"/> to process large feeds efficiently and normalises
+    /// timestamp formats into UTC.  It tolerates common variations such as
+    /// "YYYYMMDDHHMMSS -0600", "YYYYMMDDHHMMSS-0600", suffix "Z" for UTC and
+    /// missing seconds.  All programme times returned are converted to UTC.
     /// </summary>
     public static class Xmltv
     {
         /// <summary>
-        /// Parses an XMLTV document and returns a collection of channel display names
-        /// and a list of programme entries.  The channel dictionary maps XMLTV channel
-        /// identifiers to their display names (as given by the first &lt;display-name&gt;
-        /// element under each &lt;channel&gt; node).
+        /// Parses an XMLTV document and returns a dictionary of channel identifiers
+        /// to display names along with a list of programme entries.  Parsing is
+        /// performed using a streaming reader to minimise memory consumption.
         /// </summary>
         /// <param name="xml">Raw XMLTV content.</param>
-        /// <returns>A tuple containing the channel name map and the list of programmes.</returns>
-        public static (Dictionary<string, string> channelNames, List<Programme> programmes) Parse(string xml)
+        /// <returns>A tuple containing channel names and programmes.</returns>
+        public static (Dictionary<string, string> ChannelNames, List<Programme> Programmes) Parse(string xml)
         {
-            var xdoc = XDocument.Parse(xml);
-            var root = xdoc.Root ?? throw new ArgumentException("Invalid XMLTV document");
-            // Extract channel id → name mapping
+            if (string.IsNullOrWhiteSpace(xml))
+                return (new Dictionary<string, string>(), new List<Programme>());
+
             var names = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var ch in root.Elements("channel"))
+            var programmes = new List<Programme>();
+
+            using var sr = new StringReader(xml);
+            var settings = new XmlReaderSettings
             {
-                var id = (string?)ch.Attribute("id") ?? string.Empty;
-                var name = (string?)ch.Element("display-name") ?? id;
-                if (!string.IsNullOrEmpty(id))
-                    names[id] = name;
-            }
-            // Extract programmes
-            var progs = new List<Programme>();
-            foreach (var p in root.Elements("programme"))
+                IgnoreWhitespace = true,
+                IgnoreComments = true,
+                DtdProcessing = DtdProcessing.Ignore
+            };
+            using var xr = XmlReader.Create(sr, settings);
+
+            while (xr.Read())
             {
-                var channelId = (string?)p.Attribute("channel") ?? string.Empty;
-                var startAttr = (string?)p.Attribute("start") ?? string.Empty;
-                var stopAttr = (string?)p.Attribute("stop") ?? string.Empty;
-                var start = ParseTime(startAttr);
-                var stop = ParseTime(stopAttr);
-                var title = (string?)p.Element("title") ?? string.Empty;
-                var desc = (string?)p.Element("desc");
-                progs.Add(new Programme(channelId, start, stop, title, desc));
+                // Only process start elements
+                if (xr.NodeType != XmlNodeType.Element)
+                    continue;
+
+                // Handle <channel> nodes
+                if (xr.Name.Equals("channel", StringComparison.OrdinalIgnoreCase))
+                {
+                    var id = xr.GetAttribute("id") ?? string.Empty;
+                    if (!string.IsNullOrEmpty(id))
+                    {
+                        string? displayName = null;
+                        // Create a subtree reader to process child elements without
+                        // advancing the main reader beyond this node
+                        using var sub = xr.ReadSubtree();
+                        sub.Read();
+                        while (sub.Read())
+                        {
+                            if (sub.NodeType == XmlNodeType.Element && sub.Name.Equals("display-name", StringComparison.OrdinalIgnoreCase))
+                            {
+                                displayName = sub.ReadElementContentAsString();
+                                break;
+                            }
+                        }
+                        if (!string.IsNullOrWhiteSpace(displayName))
+                            names[id] = displayName!;
+                    }
+                }
+                // Handle <programme> nodes
+                else if (xr.Name.Equals("programme", StringComparison.OrdinalIgnoreCase))
+                {
+                    var channelId = xr.GetAttribute("channel") ?? string.Empty;
+                    var startRaw = xr.GetAttribute("start") ?? string.Empty;
+                    var stopRaw = xr.GetAttribute("stop") ?? string.Empty;
+                    var start = ParseXmltvTime(startRaw);
+                    var stop = ParseXmltvTime(stopRaw);
+                    string? title = null;
+                    string? desc = null;
+                    using var sub = xr.ReadSubtree();
+                    sub.Read();
+                    while (sub.Read())
+                    {
+                        if (sub.NodeType != XmlNodeType.Element)
+                            continue;
+                        if (sub.Name.Equals("title", StringComparison.OrdinalIgnoreCase))
+                        {
+                            title = sub.ReadElementContentAsString();
+                        }
+                        else if (sub.Name.Equals("desc", StringComparison.OrdinalIgnoreCase))
+                        {
+                            desc = sub.ReadElementContentAsString();
+                        }
+                    }
+                    // Use empty strings for missing fields to avoid nulls; description remains nullable
+                    programmes.Add(new Programme(channelId, start, stop, title ?? string.Empty, desc));
+                }
             }
-            return (names, progs);
+
+            // Ensure programmes are sorted by start time for downstream logic such as now/next
+            programmes.Sort((a, b) => a.StartUtc.CompareTo(b.StartUtc));
+            return (names, programmes);
         }
 
         /// <summary>
-        /// Parses XMLTV time strings into a UTC DateTimeOffset.  Handles formats such as
-        /// "YYYYMMDD HHMMSS Z" and "YYYYMMDDTHHMMSSZ", with or without separators.  The
-        /// resulting time is converted to UTC.
+        /// Parses an XMLTV timestamp into a UTC <see cref="DateTimeOffset"/>.  Supports
+        /// formats like "YYYYMMDDHHMMSS -0600", "YYYYMMDDHHMMSS-0600", suffix "Z",
+        /// and truncated times without seconds ("YYYYMMDDHHMM").  Returns UTC time.
         /// </summary>
-        /// <param name="s">A time string in XMLTV format.</param>
-        /// <returns>The corresponding UTC DateTimeOffset.</returns>
-        public static DateTimeOffset ParseTime(string s)
+        /// <param name="raw">The raw timestamp string.</param>
+        /// <returns>Parsed UTC timestamp; <see cref="DateTimeOffset.MinValue"/> if parsing fails.</returns>
+        private static DateTimeOffset ParseXmltvTime(string raw)
         {
-            if (string.IsNullOrWhiteSpace(s))
+            if (string.IsNullOrWhiteSpace(raw))
                 return DateTimeOffset.MinValue;
-            // Normalize: remove spaces and ensure timezone offset is present
-            s = s.Replace(" ", string.Empty).Replace("Z", "+0000");
-            // Expected: yyyyMMddHHmmss±HHmm (14+5 = 19 chars)
-            // Some files may use local time without seconds: yyyyMMddHHmm±HHmm
-            // We'll parse date and time components manually.
+
+            raw = raw.Trim();
+
+            // Separate date/time part and timezone part
+            string datePart = raw;
+            string tzPart = string.Empty;
+
+            // Case 1: time and offset separated by space
+            var spaceIndex = raw.IndexOf(' ');
+            if (spaceIndex > 0)
+            {
+                datePart = raw[..spaceIndex];
+                tzPart = raw[(spaceIndex + 1)..];
+            }
+            else
+            {
+                // Case 2: offset appended without space
+                if (raw.EndsWith("Z", StringComparison.OrdinalIgnoreCase))
+                {
+                    datePart = raw[..^1];
+                    tzPart = "Z";
+                }
+                else if (raw.Length >= 19 && (raw[^5] == '+' || raw[^5] == '-'))
+                {
+                    // "yyyyMMddHHmmss±HHmm"
+                    datePart = raw[..^5];
+                    tzPart = raw[^5..];
+                }
+            }
+
+            // Normalise timezone: e.g., "-0600" -> "-06:00"
+            if (tzPart.Length == 5 && (tzPart[0] == '+' || tzPart[0] == '-'))
+                tzPart = tzPart.Insert(3, ":");
+
+            // Determine format; some feeds may omit seconds
+            string format;
+            switch (datePart.Length)
+            {
+                case 14: // yyyyMMddHHmmss
+                    format = "yyyyMMddHHmmss";
+                    break;
+                case 12: // yyyyMMddHHmm
+                    format = "yyyyMMddHHmm";
+                    break;
+                default:
+                    format = "yyyyMMddHHmmss";
+                    break;
+            }
+
             try
             {
-                // Extract date/time digits
-                var digits = s.Substring(0, 14);
-                var y = int.Parse(digits.AsSpan(0, 4));
-                var mo = int.Parse(digits.AsSpan(4, 2));
-                var d = int.Parse(digits.AsSpan(6, 2));
-                var h = int.Parse(digits.AsSpan(8, 2));
-                var mi = int.Parse(digits.AsSpan(10, 2));
-                var se = int.Parse(digits.AsSpan(12, 2));
-                // Extract offset
-                var offSign = s[14] == '-' ? -1 : 1;
-                var offH = int.Parse(s.AsSpan(15, 2));
-                var offM = int.Parse(s.AsSpan(17, 2));
-                var offset = new TimeSpan(offSign * offH, offSign * offM, 0);
-                var dto = new DateTimeOffset(y, mo, d, h, mi, se, offset);
-                return dto.ToUniversalTime();
+                // If timezone part is "Z", treat datePart as UTC
+                if (tzPart.Equals("Z", StringComparison.OrdinalIgnoreCase))
+                {
+                    var dto = DateTimeOffset.ParseExact(datePart, format, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal);
+                    return dto.ToUniversalTime();
+                }
+                // If timezone part exists, parse with offset
+                if (!string.IsNullOrEmpty(tzPart))
+                {
+                    var dto = DateTimeOffset.ParseExact($"{datePart} {tzPart}", $"{format} zzz", CultureInfo.InvariantCulture, DateTimeStyles.None);
+                    return dto.ToUniversalTime();
+                }
+                // Fallback: assume UTC if no timezone provided
+                var assumed = DateTimeOffset.ParseExact(datePart, format, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal);
+                return assumed.ToUniversalTime();
             }
             catch
             {
-                // Fallback: try parse with built-in parser
-                if (DateTimeOffset.TryParseExact(s, new[] {
-                    "yyyyMMddHHmmsszzz", "yyyyMMddHHmmzzz",
-                    "yyyyMMdd'T'HHmmsszzz", "yyyyMMdd'T'HHmmzzz" },
-                    CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var parsed))
-                {
-                    return parsed.ToUniversalTime();
-                }
                 return DateTimeOffset.MinValue;
             }
         }

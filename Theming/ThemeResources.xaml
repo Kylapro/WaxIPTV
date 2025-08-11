@@ -1,0 +1,126 @@
+<!--
+    This resource dictionary defines design tokens and default styles for
+    the WaxIPTV application.  Tokens are updated at runtime by the
+    ThemeLoader based on the contents of theme.json.  These resources
+    control colours, typography, corner radius and spacing values.  A
+    handful of default styles are defined here to make consistent use
+    of the tokens across the UI.  When editing other XAML files, bind
+    to these resources via DynamicResource to ensure that theme
+    changes propagate automatically.
+-->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+    <!-- Design tokens (colours, typography, shapes) -->
+    <!-- Light mode defaults.  BgBrush is white, SurfaceBrush is a light grey.  Text is dark with a muted variant for secondary text. -->
+    <SolidColorBrush x:Key="BgBrush" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="SurfaceBrush" Color="#F5F6FA"/>
+    <SolidColorBrush x:Key="TextBrush" Color="#0B0B0F"/>
+    <SolidColorBrush x:Key="MutedTextBrush" Color="#6B7280"/>
+    <SolidColorBrush x:Key="AccentBrush" Color="#5B8CFF"/>
+    <!-- Hover and selection states derived from the accent colour will be
+         updated by ThemeLoader; default values provide sensible fallbacks. -->
+    <!-- Accent hover and selection colours for light mode: translucent blue with darker opacity. -->
+    <SolidColorBrush x:Key="AccentHoverBrush" Color="#335B8CFF"/>
+    <SolidColorBrush x:Key="AccentSelectionBrush" Color="#555B8CFF"/>
+    <!-- Divider brush is semi-transparent black on light backgrounds. -->
+    <SolidColorBrush x:Key="DividerBrush" Color="#22000000"/>
+
+    <!-- Drop‑down brush is used to colour the background of ComboBox items and
+         selection controls.  Defaults to the surface colour but can be
+         overridden via theme JSON (colors.dropdown). -->
+    <SolidColorBrush x:Key="DropdownBrush" Color="#F5F6FA"/>
+
+    <!-- Typography defaults -->
+    <sys:Double x:Key="FontSizeBase">14</sys:Double>
+    <FontFamily x:Key="FontFamilyBase">Segoe UI</FontFamily>
+
+    <!-- Shape token -->
+    <CornerRadius x:Key="ThemeCornerRadius">8</CornerRadius>
+
+    <!-- Spacing tokens; these will be recalculated by ThemeLoader based on
+         sizeBase and density values.  Values are defined here as
+         defaults to ensure that controls have some padding when no
+         theme.json is loaded. -->
+    <Thickness x:Key="SpacingXS">4</Thickness>
+    <Thickness x:Key="SpacingS">8</Thickness>
+    <Thickness x:Key="SpacingM">12</Thickness>
+    <Thickness x:Key="SpacingL">16</Thickness>
+
+    <!-- Global text and control styles.  These use DynamicResource so
+         updates to the underlying tokens are reflected throughout the
+         application without needing to reapply styles manually. -->
+    <Style TargetType="{x:Type Control}">
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+        <Setter Property="FontFamily" Value="{DynamicResource FontFamilyBase}"/>
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeBase}"/>
+    </Style>
+    <Style TargetType="{x:Type TextBlock}">
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+        <Setter Property="FontFamily" Value="{DynamicResource FontFamilyBase}"/>
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeBase}"/>
+    </Style>
+    <Style TargetType="{x:Type Window}">
+        <Setter Property="Background" Value="{DynamicResource BgBrush}"/>
+    </Style>
+
+    <!-- Accent button style; used for primary actions (Play, Save, etc.). -->
+    <Style x:Key="AccentButton" TargetType="{x:Type Button}">
+        <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+        <Setter Property="Padding" Value="{DynamicResource SpacingS}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type Button}">
+                    <Border Background="{TemplateBinding Background}"
+                            CornerRadius="{DynamicResource ThemeCornerRadius}">
+                        <ContentPresenter Margin="6,3" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Background" Value="{DynamicResource AccentHoverBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.5"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ListBox and ListBoxItem styles for the channel list.  These
+         reference the surface, divider and accent colours defined above. -->
+    <Style TargetType="{x:Type ListBox}">
+        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+    <Style TargetType="{x:Type ListBoxItem}">
+        <Setter Property="Padding" Value="8,6"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type ListBoxItem}">
+                    <Border x:Name="bd" Background="{TemplateBinding Background}"
+                            CornerRadius="{DynamicResource ThemeCornerRadius}">
+                        <ContentPresenter Margin="4,2"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="bd" Property="Background" Value="{DynamicResource AccentHoverBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="bd" Property="Background" Value="{DynamicResource AccentSelectionBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.6"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+</ResourceDictionary>

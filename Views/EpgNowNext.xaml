@@ -13,10 +13,18 @@
         manually set in code-behind. Each programme is displayed with
         its title and time range converted to local time.
     -->
-    <StackPanel Margin="8">
-        <TextBlock Text="Now:" FontWeight="Bold"/>
-        <TextBlock x:Name="NowText" Text="No programme" Margin="0,0,0,8"/>
-        <TextBlock Text="Next:" FontWeight="Bold"/>
-        <TextBlock x:Name="NextText" Text="No programme"/>
-    </StackPanel>
+    <!-- Present now/next information inside a surface coloured card.  The
+         border uses the ThemeCornerRadius token to ensure rounding
+         matches the rest of the UI, and spacing tokens provide
+         consistent padding. -->
+    <Border Background="{DynamicResource SurfaceBrush}"
+            CornerRadius="{DynamicResource ThemeCornerRadius}"
+            Padding="{DynamicResource SpacingM}">
+        <StackPanel>
+            <TextBlock Text="Now:" FontWeight="Bold" Foreground="{DynamicResource MutedTextBrush}"/>
+            <TextBlock x:Name="NowText" Text="No programme" Margin="0,0,0,8"/>
+            <TextBlock Text="Next:" FontWeight="Bold" Foreground="{DynamicResource MutedTextBrush}"/>
+            <TextBlock x:Name="NextText" Text="No programme"/>
+        </StackPanel>
+    </Border>
 </UserControl>

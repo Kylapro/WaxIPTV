@@ -1,5 +1,17 @@
 {
-  "colors": { "bg": "#0B0B0F", "text": "#FFFFFF", "accent": "#5B8CFF" },
+  // Default light theme palette.  The background is white, text is dark and accent colour is blue.
+  "colors": {
+    // Base background colour for the application
+    "bg": "#FFFFFF",
+    // Colour for window text and primary labels
+    "text": "#0B0B0F",
+    // Surface colour for cards and panels; slightly darker than the background
+    "surface": "#F5F6FA",
+    // Accent colour used for buttons and highlights
+    "accent": "#5B8CFF",
+    // Drop‑down background colour
+    "dropdown": "#F5F6FA"
+  },
   "typography": { "fontFamily": "Segoe UI", "sizeBase": 14 },
   "shape": { "radius": 8 }
 }

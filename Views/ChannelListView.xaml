@@ -3,5 +3,16 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Height="Auto" Width="Auto">
     <!-- A simple list for displaying available channels -->
-    <ListBox x:Name="ChannelList" DisplayMemberPath="Name" />
+    <!--
+        Display the available IPTV channels.  The DisplayMemberPath
+        binds to the Channel.Name property.  A double click on an
+        item will raise the ChannelActivated event, enabling the
+        consumer (e.g. MainWindow) to immediately start playback.
+    -->
+    <ListBox x:Name="ChannelList"
+             DisplayMemberPath="Name"
+             Background="{DynamicResource SurfaceBrush}"
+             BorderBrush="{DynamicResource DividerBrush}"
+             BorderThickness="1"
+             MouseDoubleClick="ChannelList_MouseDoubleClick"/>
 </UserControl>

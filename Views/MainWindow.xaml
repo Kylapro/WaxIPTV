@@ -3,48 +3,107 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:views="clr-namespace:WaxIPTV.Views"
         Title="WaxIPTV"
-        Height="500"
-        Width="900"
+        Height="600"
+        Width="980"
         MinHeight="400"
-        MinWidth="600">
+        MinWidth="600"
+        Background="{DynamicResource BgBrush}"
+        Foreground="{DynamicResource TextBrush}"
+        Icon="pack://application:,,,/WaxIPTVIcon.ico">
     <!--
-        A simple layout with a channel list on the left and a now/next
-        panel on the right. At the bottom of the right panel are
-        playback controls. This skeleton does not include full MVVM
-        bindings; instead, it uses code-behind in MainWindow.xaml.cs
-        to wire up events and update the UI. The view also demonstrates
-        how additional user controls (ChannelListView and EpgNowNext)
-        can be composed into the main window.
+        The main application window displays a list of IPTV channels
+        alongside a Now/Next panel and playback controls.  A top
+        level menu provides access to the settings dialog and an
+        exit command.  Channels can be double‑clicked to start
+        playback immediately; the play/pause/stop buttons control
+        the currently active external player.
     -->
-    <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="2*"/>
-            <ColumnDefinition Width="3*"/>
-        </Grid.ColumnDefinitions>
+    <DockPanel>
+        <!-- Top menu bar -->
+        <Menu DockPanel.Dock="Top">
+            <MenuItem Header="_File">
+                <MenuItem Header="Settings..." Click="SettingsMenu_Click" InputGestureText="Ctrl+,"/>
+                <MenuItem Header="EPG Guide" Click="GuideMenu_Click"/>
+                <MenuItem Header="Refresh (Playlist + EPG)" Click="RefreshMenu_Click"/>
+                <Separator/>
+                <MenuItem Header="Exit" Click="ExitMenu_Click"/>
+            </MenuItem>
+        </Menu>
 
-        <!-- Left pane: channel list -->
-        <StackPanel Grid.Column="0" Background="WhiteSmoke" >
-            <TextBlock Text="Channels" FontWeight="Bold" Margin="8"/>
-            <views:ChannelListView x:Name="ChannelListViewControl" Margin="8"/>
-        </StackPanel>
+        <!-- Main content: two columns -->
+        <Grid Margin="8">
+            <Grid.ColumnDefinitions>
+                <!-- Fixed width for the channel list -->
+                <ColumnDefinition Width="280"/>
+                <!-- Remaining space for the now/next panel -->
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
 
-        <!-- Right pane: now/next and controls -->
-        <Grid Grid.Column="1">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
-            <!-- Selected channel name -->
-            <TextBlock x:Name="SelectedChannelTitle" FontSize="18" FontWeight="Bold" Margin="8"/>
-            <!-- Now/next panel -->
-            <views:EpgNowNext x:Name="EpgNowNextPanel" Grid.Row="1" Margin="8"/>
-            <!-- Playback controls -->
-            <StackPanel Orientation="Horizontal" Grid.Row="2" Margin="8">
-                <Button x:Name="PlayButton" Content="Play" Width="75" Margin="0,0,8,0" Click="PlayButton_Click"/>
-                <Button x:Name="PauseButton" Content="Pause" Width="75" Margin="0,0,8,0" Click="PauseButton_Click"/>
-                <Button x:Name="StopButton" Content="Stop" Width="75" Margin="0,0,8,0" Click="StopButton_Click"/>
-            </StackPanel>
+            <!-- Left: filter bar and channel list -->
+            <Grid Grid.Column="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <!-- Filter bar: provides a group selector and search box.  The
+                     search box occupies remaining space thanks to DockPanel.
+                     Controls use SurfaceBrush and DividerBrush to improve
+                     contrast against the dark background. -->
+                <DockPanel Margin="0,0,0,8" Grid.Row="0">
+                    <!-- Group filter on the left -->
+                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" Margin="0,0,8,0">
+                        <TextBlock Text="Group" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <ComboBox x:Name="GroupFilter" Width="160"
+                                  SelectionChanged="GroupFilter_SelectionChanged"
+                                  Background="{DynamicResource DropdownBrush}"
+                                  Foreground="{DynamicResource TextBrush}"
+                                  BorderBrush="{DynamicResource DividerBrush}"
+                                  BorderThickness="1"/>
+                    </StackPanel>
+                    <!-- Clear button on the right -->
+                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" Margin="8,0,0,0">
+                        <Button Content="Clear"
+                                Click="ClearSearch_Click"
+                                Style="{DynamicResource AccentButton}"/>
+                    </StackPanel>
+                    <!-- Search box fills the remaining space -->
+                    <TextBox x:Name="SearchBox"
+                             Margin="0,0,8,0"
+                             VerticalAlignment="Center"
+                             HorizontalAlignment="Stretch"
+                             TextChanged="SearchBox_TextChanged"
+                             Background="{DynamicResource SurfaceBrush}"
+                             Foreground="{DynamicResource TextBrush}"
+                             BorderBrush="{DynamicResource DividerBrush}"
+                             BorderThickness="1"/>
+                </DockPanel>
+                <!-- Channel list -->
+                <views:ChannelListView x:Name="ChannelList" Grid.Row="1"
+                                       ChannelActivated="ChannelList_ChannelActivated"/>
+            </Grid>
+
+            <!-- Right: selected channel title, now/next and controls.  The
+                 entire panel is placed inside a card using the SurfaceBrush
+                 and ThemeCornerRadius tokens.  Padding and spacing are
+                 defined via design tokens to ensure consistent layout. -->
+            <Border Grid.Column="1"
+                    Margin="12,0,0,0"
+                    Background="{DynamicResource SurfaceBrush}"
+                    CornerRadius="{DynamicResource ThemeCornerRadius}"
+                    Padding="{DynamicResource SpacingM}">
+                <StackPanel>
+                    <!-- Selected channel name -->
+                    <TextBlock x:Name="SelectedChannelTitle" FontSize="18" FontWeight="Bold" Margin="0,0,0,8"/>
+                    <!-- Now/next view -->
+                    <views:EpgNowNext x:Name="NowNext"/>
+                    <!-- Playback controls -->
+                    <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                        <Button x:Name="PlayButton" Content="Play" Width="80" Margin="0,0,8,0" Click="PlayButton_Click" Style="{DynamicResource AccentButton}"/>
+                        <Button x:Name="PauseButton" Content="Pause" Width="80" Margin="0,0,8,0" Click="PauseButton_Click" Style="{DynamicResource AccentButton}"/>
+                        <Button x:Name="StopButton" Content="Stop" Width="80" Click="StopButton_Click" Style="{DynamicResource AccentButton}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
         </Grid>
-    </Grid>
+    </DockPanel>
 </Window>

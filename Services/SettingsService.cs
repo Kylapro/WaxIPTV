@@ -59,11 +59,17 @@ namespace WaxIPTV.Services
         }
 
         /// <summary>
-        /// Persists the current settings to disk.  The resulting JSON is formatted with indentation
-        /// for readability.
+        /// Persists the provided settings to disk.  The resulting JSON is formatted
+        /// with indentation for readability.  When invoked with a null parameter, this
+        /// method uses the current <see cref="Settings"/> instance.
         /// </summary>
-        public void Save()
+        public void Save(AppSettings? settings = null)
         {
+            // If a specific settings instance is provided, update the internal Settings
+            if (settings != null)
+            {
+                Settings = settings;
+            }
             var json = JsonSerializer.Serialize(Settings, new JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(_settingsFilePath, json);
         }
