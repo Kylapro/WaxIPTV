@@ -30,54 +30,87 @@ namespace WaxIPTV.Services
             Dictionary<string, string> channelNames,
             Dictionary<string, string>? overrides = null)
         {
+            return MapProgrammesInBatches(programmes, channels, channelNames, int.MaxValue, overrides);
+        }
+
+        /// <summary>
+        /// Builds a lookup from channel identifier to a list of programmes scheduled
+        /// on that channel. Programmes are processed in batches to keep memory usage
+        /// low. When a channel in the playlist is missing or has an invalid TVG ID,
+        /// a best-effort match is attempted using normalised names. If a match is
+        /// found, the channel is mapped to the programme's TVG ID for subsequent
+        /// lookups; otherwise the programme is skipped so no EPG info is shown for
+        /// that channel.
+        /// </summary>
+        /// <param name="programmes">Enumerable of programme entries parsed from XMLTV.</param>
+        /// <param name="channels">List of channels parsed from an M3U playlist.</param>
+        /// <param name="channelNames">Dictionary mapping XMLTV channel IDs to display names.</param>
+        /// <param name="batchSize">Number of programmes to process per batch.</param>
+        /// <param name="overrides">Optional manual overrides mapping normalised channel names to TVG IDs.</param>
+        /// <returns>Dictionary mapping the internal channel ID to its list of programmes.</returns>
+        public static Dictionary<string, List<Programme>> MapProgrammesInBatches(
+            IEnumerable<Programme> programmes,
+            List<Channel> channels,
+            Dictionary<string, string> channelNames,
+            int batchSize,
+            Dictionary<string, string>? overrides = null)
+        {
             overrides ??= new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            // Build a lookup of channels by TVG ID and by normalised name
             var channelsByTvgId = channels
                 .Where(c => !string.IsNullOrEmpty(c.TvgId))
                 .ToDictionary(c => c.TvgId!, c => c, StringComparer.OrdinalIgnoreCase);
             var channelsByNormName = channels
                 .ToDictionary(c => NormalizeName(c.Name), c => c, StringComparer.OrdinalIgnoreCase);
+            var channelIndex = channels
+                .Select((c, i) => new { c.Id, Index = i })
+                .ToDictionary(x => x.Id, x => x.Index, StringComparer.OrdinalIgnoreCase);
 
             var result = new Dictionary<string, List<Programme>>();
 
-            foreach (var prog in programmes)
+            foreach (var chunk in programmes.Chunk(batchSize))
             {
-                Channel? match = null;
-                // Try match by TVG ID first
-                if (!string.IsNullOrEmpty(prog.ChannelId) && channelsByTvgId.TryGetValue(prog.ChannelId, out var byId))
+                foreach (var prog in chunk)
                 {
-                    match = byId;
-                }
-                else
-                {
-                    // Attempt manual override: map normalised XMLTV display name to a TVG ID
-                    if (channelNames.TryGetValue(prog.ChannelId, out var displayName))
+                    Channel? match = null;
+                    if (!string.IsNullOrEmpty(prog.ChannelId) && channelsByTvgId.TryGetValue(prog.ChannelId, out var byId))
+                    {
+                        match = byId;
+                    }
+                    else if (channelNames.TryGetValue(prog.ChannelId, out var displayName))
                     {
                         var norm = NormalizeName(displayName);
-                        if (overrides.TryGetValue(norm, out var overrideTvgId))
+                        if (overrides.TryGetValue(norm, out var overrideTvgId) &&
+                            channelsByTvgId.TryGetValue(overrideTvgId, out var overrideChannel))
                         {
-                            if (channelsByTvgId.TryGetValue(overrideTvgId, out var overrideChannel))
-                                match = overrideChannel;
+                            match = overrideChannel;
                         }
-                        if (match == null)
+                        if (match == null && channelsByNormName.TryGetValue(norm, out var byName))
                         {
-                            // Match by normalised name
-                            if (channelsByNormName.TryGetValue(norm, out var byName))
-                                match = byName;
+                            match = byName;
+                            if (!string.IsNullOrEmpty(prog.ChannelId) && (!string.Equals(byName.TvgId, prog.ChannelId, StringComparison.OrdinalIgnoreCase)))
+                            {
+                                var updated = byName with { TvgId = prog.ChannelId };
+                                channels[channelIndex[byName.Id]] = updated;
+                                channelsByNormName[norm] = updated;
+                                channelsByTvgId[prog.ChannelId] = updated;
+                            }
                         }
                     }
-                }
-                if (match != null)
-                {
-                    var id = match.Id;
-                    if (!result.TryGetValue(id, out var list))
+                    if (match != null)
                     {
-                        list = new List<Programme>();
-                        result[id] = list;
+                        if (!result.TryGetValue(match.Id, out var list))
+                        {
+                            list = new List<Programme>();
+                            result[match.Id] = list;
+                        }
+                        list.Add(prog);
                     }
-                    list.Add(prog);
                 }
             }
+
+            foreach (var list in result.Values)
+                list.Sort((a, b) => a.StartUtc.CompareTo(b.StartUtc));
+
             return result;
         }
 

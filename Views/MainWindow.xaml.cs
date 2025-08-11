@@ -448,9 +448,9 @@ namespace WaxIPTV.Views
             {
                 try
                 {
-                    var (channelNames, programmes) = Xmltv.Parse(xml);
-                    var ordered = programmes.OrderBy(p => p.StartUtc).ToList();
-                    programmesDict = EpgMapper.MapProgrammes(ordered, _channels, channelNames);
+                    var channelNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    var programmesEnum = Xmltv.StreamProgrammes(xml, channelNames);
+                    programmesDict = EpgMapper.MapProgrammesInBatches(programmesEnum, _channels, channelNames, 200);
                     // Trim programmes beyond 7 days to limit memory usage
                     var cutoff = DateTimeOffset.UtcNow.AddDays(7);
                     foreach (var kv in programmesDict)
