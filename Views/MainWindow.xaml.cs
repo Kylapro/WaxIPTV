@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Threading.Tasks;
+using System.Text;
 using WaxIPTV.Models;
 using WaxIPTV.Services;
 
@@ -68,6 +70,40 @@ namespace WaxIPTV.Views
                 "WaxIPTV");
             System.IO.Directory.CreateDirectory(dir);
             return System.IO.Path.Combine(dir, "epg-cache.xml");
+        }
+
+        /// <summary>
+        /// Converts a byte array representing an EPG XML or gzipped XML into a
+        /// UTF-8 string. If the source ends with ".gz", the bytes are
+        /// decompressed using <see cref="GZipStream"/> before decoding. If
+        /// decompression fails, the bytes are decoded directly. This mirrors the
+        /// logic used in the settings view model for downloading EPG data.
+        /// </summary>
+        /// <param name="bytes">Raw bytes downloaded or read from disk.</param>
+        /// <param name="source">Original URL or file path to determine if gzipped.</param>
+        /// <returns>Decoded XML string.</returns>
+        private static string ConvertEpgBytesToString(byte[] bytes, string source)
+        {
+            try
+            {
+                if (!string.IsNullOrEmpty(source) && source.EndsWith(".gz", StringComparison.OrdinalIgnoreCase))
+                {
+                    using var input = new MemoryStream(bytes);
+                    using var gz = new GZipStream(input, CompressionMode.Decompress);
+                    using var output = new MemoryStream();
+                    gz.CopyTo(output);
+                    return Encoding.UTF8.GetString(output.ToArray());
+                }
+                else
+                {
+                    return Encoding.UTF8.GetString(bytes);
+                }
+            }
+            catch
+            {
+                // Fallback to plain UTF-8 decoding if decompression fails
+                return Encoding.UTF8.GetString(bytes);
+            }
         }
 
         /// <summary>
@@ -361,24 +397,21 @@ namespace WaxIPTV.Views
             {
                 try
                 {
-                    string fetched;
+                    byte[] bytes = Array.Empty<byte>();
                     if (Uri.TryCreate(source, UriKind.Absolute, out var uri) &&
                         (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
                     {
                         using var client = new System.Net.Http.HttpClient();
-                        fetched = await client.GetStringAsync(uri);
+                        bytes = await client.GetByteArrayAsync(uri);
                     }
                     else if (File.Exists(source))
                     {
-                        fetched = await File.ReadAllTextAsync(source);
-                    }
-                    else
-                    {
-                        fetched = string.Empty;
+                        bytes = await File.ReadAllBytesAsync(source);
                     }
 
-                    if (!string.IsNullOrEmpty(fetched))
+                    if (bytes.Length > 0)
                     {
+                        var fetched = ConvertEpgBytesToString(bytes, source);
                         xml = fetched;
                         // write/update the cache
                         try
