@@ -1,8 +1,50 @@
 <Window x:Class="WaxIPTV.Views.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="WaxIPTV" Height="450" Width="800">
+        xmlns:views="clr-namespace:WaxIPTV.Views"
+        Title="WaxIPTV"
+        Height="500"
+        Width="900"
+        MinHeight="400"
+        MinWidth="600">
+    <!--
+        A simple layout with a channel list on the left and a now/next
+        panel on the right. At the bottom of the right panel are
+        playback controls. This skeleton does not include full MVVM
+        bindings; instead, it uses code-behind in MainWindow.xaml.cs
+        to wire up events and update the UI. The view also demonstrates
+        how additional user controls (ChannelListView and EpgNowNext)
+        can be composed into the main window.
+    -->
     <Grid>
-        <!-- TODO: add UI elements here -->
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="2*"/>
+            <ColumnDefinition Width="3*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Left pane: channel list -->
+        <StackPanel Grid.Column="0" Background="WhiteSmoke" >
+            <TextBlock Text="Channels" FontWeight="Bold" Margin="8"/>
+            <views:ChannelListView x:Name="ChannelListViewControl" Margin="8"/>
+        </StackPanel>
+
+        <!-- Right pane: now/next and controls -->
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <!-- Selected channel name -->
+            <TextBlock x:Name="SelectedChannelTitle" FontSize="18" FontWeight="Bold" Margin="8"/>
+            <!-- Now/next panel -->
+            <views:EpgNowNext x:Name="EpgNowNextPanel" Grid.Row="1" Margin="8"/>
+            <!-- Playback controls -->
+            <StackPanel Orientation="Horizontal" Grid.Row="2" Margin="8">
+                <Button x:Name="PlayButton" Content="Play" Width="75" Margin="0,0,8,0" Click="PlayButton_Click"/>
+                <Button x:Name="PauseButton" Content="Pause" Width="75" Margin="0,0,8,0" Click="PauseButton_Click"/>
+                <Button x:Name="StopButton" Content="Stop" Width="75" Margin="0,0,8,0" Click="StopButton_Click"/>
+            </StackPanel>
+        </Grid>
     </Grid>
 </Window>

@@ -1,0 +1,22 @@
+<UserControl x:Class="WaxIPTV.Views.EpgNowNext"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d"
+             Height="Auto" Width="Auto">
+    <!--
+        A simple view to display the currently airing programme (Now) and
+        the upcoming programme (Next) for a selected channel. This
+        UserControl relies on two dependency properties, `NowProgramme`
+        and `NextProgramme`, which can be bound from a viewmodel or
+        manually set in code-behind. Each programme is displayed with
+        its title and time range converted to local time.
+    -->
+    <StackPanel Margin="8">
+        <TextBlock Text="Now:" FontWeight="Bold"/>
+        <TextBlock x:Name="NowText" Text="No programme" Margin="0,0,0,8"/>
+        <TextBlock Text="Next:" FontWeight="Bold"/>
+        <TextBlock x:Name="NextText" Text="No programme"/>
+    </StackPanel>
+</UserControl>

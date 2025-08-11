@@ -1,0 +1,4 @@
+{
+  "home": ["search", "groups", "favorites"],
+  "playerBar": { "buttons": ["pause", "stop", "volume"] }
+}
