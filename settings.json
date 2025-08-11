@@ -1,0 +1,19 @@
+{
+  // Choice of external player: "mpv" or "vlc"
+  "player": "mpv",
+
+  // Optional: path to mpv.exe.  Leave empty to auto-detect.
+  "mpvPath": "",
+
+  // Optional: path to vlc.exe.  Leave empty to auto-detect.
+  "vlcPath": "",
+
+  // URL to a remote M3U or M3U8 playlist (if not provided, load from local file instead)
+  "playlistUrl": "",
+
+  // URL to an XMLTV EPG feed for programme guide data
+  "xmltvUrl": "",
+
+  // How often, in hours, to refresh the EPG data
+  "epgRefreshHours": 12
+}
