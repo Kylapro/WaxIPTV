@@ -105,6 +105,80 @@ namespace WaxIPTV.Services
         }
 
         /// <summary>
+        /// Streams programmes from an XMLTV document while populating a dictionary
+        /// of channel identifiers to display names.  This method yields programmes
+        /// sequentially, allowing callers to process them in small groups and
+        /// thereby reduce memory pressure.
+        /// </summary>
+        /// <param name="xml">Raw XMLTV content.</param>
+        /// <param name="channelNames">Dictionary to receive channel id/display name pairs.</param>
+        /// <returns>An enumeration of <see cref="Programme"/> items.</returns>
+        public static IEnumerable<Programme> StreamProgrammes(string xml, Dictionary<string, string> channelNames)
+        {
+            if (string.IsNullOrWhiteSpace(xml))
+                yield break;
+
+            using var sr = new StringReader(xml);
+            var settings = new XmlReaderSettings
+            {
+                IgnoreWhitespace = true,
+                IgnoreComments = true,
+                DtdProcessing = DtdProcessing.Ignore
+            };
+            using var xr = XmlReader.Create(sr, settings);
+
+            while (xr.Read())
+            {
+                if (xr.NodeType != XmlNodeType.Element)
+                    continue;
+
+                if (xr.Name.Equals("channel", StringComparison.OrdinalIgnoreCase))
+                {
+                    var id = xr.GetAttribute("id") ?? string.Empty;
+                    if (!string.IsNullOrEmpty(id))
+                    {
+                        string? displayName = null;
+                        using var sub = xr.ReadSubtree();
+                        sub.Read();
+                        while (sub.Read())
+                        {
+                            if (sub.NodeType == XmlNodeType.Element &&
+                                sub.Name.Equals("display-name", StringComparison.OrdinalIgnoreCase))
+                            {
+                                displayName = sub.ReadElementContentAsString();
+                                break;
+                            }
+                        }
+                        if (!string.IsNullOrWhiteSpace(displayName))
+                            channelNames[id] = displayName!;
+                    }
+                }
+                else if (xr.Name.Equals("programme", StringComparison.OrdinalIgnoreCase))
+                {
+                    var channelId = xr.GetAttribute("channel") ?? string.Empty;
+                    var startRaw = xr.GetAttribute("start") ?? string.Empty;
+                    var stopRaw = xr.GetAttribute("stop") ?? string.Empty;
+                    var start = ParseXmltvTime(startRaw);
+                    var stop = ParseXmltvTime(stopRaw);
+                    string? title = null;
+                    string? desc = null;
+                    using var sub = xr.ReadSubtree();
+                    sub.Read();
+                    while (sub.Read())
+                    {
+                        if (sub.NodeType != XmlNodeType.Element)
+                            continue;
+                        if (sub.Name.Equals("title", StringComparison.OrdinalIgnoreCase))
+                            title = sub.ReadElementContentAsString();
+                        else if (sub.Name.Equals("desc", StringComparison.OrdinalIgnoreCase))
+                            desc = sub.ReadElementContentAsString();
+                    }
+                    yield return new Programme(channelId, start, stop, title ?? string.Empty, desc);
+                }
+            }
+        }
+
+        /// <summary>
         /// Parses an XMLTV timestamp into a UTC <see cref="DateTimeOffset"/>.  Supports
         /// formats like "YYYYMMDDHHMMSS -0600", "YYYYMMDDHHMMSS-0600", suffix "Z",
         /// and truncated times without seconds ("YYYYMMDDHHMM").  Returns UTC time.
