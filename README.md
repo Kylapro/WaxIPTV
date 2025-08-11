@@ -37,10 +37,10 @@ handling.
 3. Build and run the project.  On first launch, the app will attempt to detect installed copies of mpv and VLC and write a `settings.json` file into the application directory with defaults.  You can edit this file to specify:
    - `player`: `"mpv"` or `"vlc"`.
    - `mpvPath`/`vlcPath`: absolute paths to the players’ executables.
-   - `playlistUrl`: a local path to your M3U playlist.
-   - `xmltvUrl`: a local path to your XMLTV EPG.
+   - `playlistUrl`: a local path or URL to your M3U playlist.
+   - `xmltvUrl`: a path or URL to your XMLTV EPG. If left blank, the application will prompt for an EPG link on startup.
    - `epgRefreshHours`: how often, in hours, to reload the EPG.
-4. Place your playlist (`.m3u` or `.m3u8`) and EPG (`.xml`, optionally compressed) in locations accessible by the app and update the paths in `settings.json`.  When you launch the app again, the channel list will be populated from the playlist and the Now/Next panel will show programme information from the EPG.
+4. Place your playlist (`.m3u` or `.m3u8`) somewhere accessible. On first run the app will ask for an EPG URL, download the XML (supporting `.gz` compression) and cache it under your `%LocalAppData%\WaxIPTV` folder. Subsequent launches read from this cached file unless the refresh interval has elapsed. The channel list will be populated from the playlist and the Now/Next panel will show programme information from the cached EPG.
 5. Click **Play**, **Pause** and **Stop** to control the chosen external player.  If no player is available (paths are blank and detection fails), the playback buttons will be disabled.
 
 ### Customising the Theme and Layout

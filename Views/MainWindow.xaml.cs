@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Threading.Tasks;
+using Microsoft.VisualBasic;
 using WaxIPTV.Models;
 using WaxIPTV.Services;
 
@@ -96,6 +97,22 @@ namespace WaxIPTV.Views
             // Load settings from disk
             _settingsService.Load();
             var settings = _settingsService.Settings;
+
+            // Prompt for an EPG URL if one has not been configured yet.  This
+            // allows first‑time users to simply paste a link without visiting
+            // the settings dialog.
+            if (string.IsNullOrWhiteSpace(settings.XmltvUrl))
+            {
+                var url = Interaction.InputBox(
+                    "Enter EPG (XMLTV) URL:",
+                    "EPG URL",
+                    "http://drewlive24.duckdns.org:8081/merged2_epg.xml.gz");
+                if (!string.IsNullOrWhiteSpace(url))
+                {
+                    settings.XmltvUrl = url;
+                    _settingsService.Save(settings);
+                }
+            }
 
             // Initialise or update the external player controller based
             // on the selected player type.  Delay instantiation until
@@ -366,11 +383,13 @@ namespace WaxIPTV.Views
                         (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
                     {
                         using var client = new System.Net.Http.HttpClient();
-                        fetched = await client.GetStringAsync(uri);
+                        var bytes = await client.GetByteArrayAsync(uri);
+                        fetched = EpgHelpers.ConvertEpgBytesToString(bytes, source);
                     }
                     else if (File.Exists(source))
                     {
-                        fetched = await File.ReadAllTextAsync(source);
+                        var bytes = await File.ReadAllBytesAsync(source);
+                        fetched = EpgHelpers.ConvertEpgBytesToString(bytes, source);
                     }
                     else
                     {
