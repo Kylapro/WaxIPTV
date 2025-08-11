@@ -14,8 +14,6 @@ using WaxIPTV.Theming;
 using WaxIPTV.Views;
 using System.Net.Http;
 using System.Threading.Tasks;
-using System.IO.Compression;
-using System.Text;
 
 namespace WaxIPTV.ViewModels
 {
@@ -379,41 +377,6 @@ namespace WaxIPTV.ViewModels
         }
 
         /// <summary>
-        /// Converts a byte array representing an EPG XML or gzipped XML into a
-        /// string.  If the source path ends with ".gz", the data is
-        /// decompressed using a GZipStream before decoding as UTF‑8.  Otherwise
-        /// the bytes are decoded directly.  This helper centralises the
-        /// decompression logic used by DownloadEpg.
-        /// </summary>
-        /// <param name="bytes">Raw bytes downloaded or read from disk.</param>
-        /// <param name="source">The original URL or file path used to identify
-        /// whether the data is gzipped.</param>
-        /// <returns>The UTF‑8 string representation of the EPG XML.</returns>
-        private static string ConvertEpgBytesToString(byte[] bytes, string source)
-        {
-            try
-            {
-                if (!string.IsNullOrEmpty(source) && source.EndsWith(".gz", StringComparison.OrdinalIgnoreCase))
-                {
-                    using var input = new MemoryStream(bytes);
-                    using var gz = new GZipStream(input, CompressionMode.Decompress);
-                    using var output = new MemoryStream();
-                    gz.CopyTo(output);
-                    return Encoding.UTF8.GetString(output.ToArray());
-                }
-                else
-                {
-                    return Encoding.UTF8.GetString(bytes);
-                }
-            }
-            catch
-            {
-                // Fallback to plain UTF‑8 if decompression fails
-                return Encoding.UTF8.GetString(bytes);
-            }
-        }
-
-        /// <summary>
         /// Downloads the EPG XML from the configured URL or local path and
         /// writes it to the cache file.  If the source is invalid or the
         /// download fails, an error message is shown.  On success, the
@@ -465,7 +428,7 @@ namespace WaxIPTV.ViewModels
                             }
                         }
                         // Convert to string, decompress if necessary
-                        xml = ConvertEpgBytesToString(ms.ToArray(), XmltvUrl);
+                        xml = EpgHelpers.ConvertEpgBytesToString(ms.ToArray(), XmltvUrl);
                     }
                     catch (Exception ex)
                     {
@@ -477,7 +440,7 @@ namespace WaxIPTV.ViewModels
                 {
                     byte[] bytes = await System.IO.File.ReadAllBytesAsync(XmltvUrl);
                     EpgDownloadProgress = 100;
-                    xml = ConvertEpgBytesToString(bytes, XmltvUrl);
+                    xml = EpgHelpers.ConvertEpgBytesToString(bytes, XmltvUrl);
                 }
                 else
                 {

@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.IO;
+using System.IO.Compression;
+using System.Text;
 using WaxIPTV.Models;
 
 namespace WaxIPTV.Services
@@ -38,6 +41,38 @@ namespace WaxIPTV.Services
                 }
             }
             return (now, next);
+        }
+
+        /// <summary>
+        /// Converts raw bytes representing an XMLTV document (optionally gzipped)
+        /// into a UTF-8 string. If the source path or URL ends with <c>.gz</c>, the
+        /// bytes are decompressed using <see cref="GZipStream"/> before decoding.
+        /// </summary>
+        /// <param name="bytes">Raw bytes downloaded or read from disk.</param>
+        /// <param name="source">Original source path or URL to determine if gzip is used.</param>
+        /// <returns>UTF-8 string of the XMLTV data.</returns>
+        public static string ConvertEpgBytesToString(byte[] bytes, string source)
+        {
+            try
+            {
+                if (!string.IsNullOrEmpty(source) && source.EndsWith(".gz", StringComparison.OrdinalIgnoreCase))
+                {
+                    using var input = new MemoryStream(bytes);
+                    using var gz = new GZipStream(input, CompressionMode.Decompress);
+                    using var output = new MemoryStream();
+                    gz.CopyTo(output);
+                    return Encoding.UTF8.GetString(output.ToArray());
+                }
+                else
+                {
+                    return Encoding.UTF8.GetString(bytes);
+                }
+            }
+            catch
+            {
+                // Fallback to plain UTF-8 if decompression fails
+                return Encoding.UTF8.GetString(bytes);
+            }
         }
     }
 }
