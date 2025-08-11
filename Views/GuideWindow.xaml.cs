@@ -56,7 +56,7 @@ namespace WaxIPTV.Views
             Loaded += OnLoaded;
         }
 
-        private void OnLoaded(object sender, RoutedEventArgs e)
+        private async void OnLoaded(object sender, RoutedEventArgs e)
         {
             // Populate group filter ComboBox
             var groups = _allChannels
@@ -71,11 +71,12 @@ namespace WaxIPTV.Views
             GroupFilter.SelectedIndex = 0;
             _selectedGroup = "All";
 
-            // Build initial guide rows
+            // Build initial guide rows in the background so the UI remains
+            // responsive even with large channel/EPG datasets.
             // Precompute all guide rows once; we'll filter these instead of
             // rebuilding programme slots on every search or group change.  The
             // time window is anchored at the moment of loading.
-            _allGuideRows = BuildGuideRows(_allChannels);
+            _allGuideRows = await Task.Run(() => BuildGuideRows(_allChannels));
 
             ApplyFilterAndBuildGuide();
 
