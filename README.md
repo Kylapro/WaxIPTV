@@ -38,7 +38,7 @@ handling.
    - `player`: `"mpv"` or `"vlc"`.
    - `mpvPath`/`vlcPath`: absolute paths to the players’ executables.
    - `playlistUrl`: a local path to your M3U playlist.
-   - `xmltvUrl`: a local path to your XMLTV EPG.
+   - `xmltvUrl`: a local path or HTTP(S) URL to your XMLTV EPG (plain or gzipped).
    - `epgRefreshHours`: how often, in hours, to reload the EPG.
 4. Place your playlist (`.m3u` or `.m3u8`) and EPG (`.xml`, optionally compressed) in locations accessible by the app and update the paths in `settings.json`.  When you launch the app again, the channel list will be populated from the playlist and the Now/Next panel will show programme information from the EPG.
 5. Click **Play**, **Pause** and **Stop** to control the chosen external player.  If no player is available (paths are blank and detection fails), the playback buttons will be disabled.
