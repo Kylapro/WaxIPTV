@@ -8,14 +8,11 @@
     <!-- Set the root namespace and assembly name explicitly to match the app name -->
     <RootNamespace>WaxIPTV</RootNamespace>
     <AssemblyName>WaxIPTV</AssemblyName>
-    <!-- Enable single-file publish and trimming for easier distribution -->
-    <PublishSingleFile>true</PublishSingleFile>
-    <PublishTrimmed>true</PublishTrimmed>
-    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <!-- Single-file publishing and trimming are configured at publish time using CLI parameters. -->
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
-    <PackageReference Include="System.Text.Json" Version="8.0.3" />
+    <!-- System.Text.Json is available inbox with .NET; no explicit package reference needed. -->
     <!-- The SQLite package is optional; remove if not needed for MVP -->
     <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.3" />
   </ItemGroup>

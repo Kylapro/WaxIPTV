@@ -15,7 +15,10 @@ namespace WaxIPTV.Services
     public static class M3UParser
     {
         // Regular expression used to extract key="value" pairs from the EXTINF line
-        private static readonly Regex Attr = new(@"(\w+(?:-\w+)*)=\"([^\"]*)\"", RegexOptions.Compiled);
+        // Use a verbatim string (prefixed with @) for the regex pattern.  When using verbatim
+        // strings, double quotes must be doubled to escape them.  This pattern captures
+        // key="value" pairs such as tvg-id="channel-id" and tvg-logo="logo.png".
+        private static readonly Regex Attr = new(@"(\w+(?:-\w+)*)=""([^""]*)""", RegexOptions.Compiled);
 
         /// <summary>
         /// Parses a raw M3U playlist and returns a list of channels.  The parser
