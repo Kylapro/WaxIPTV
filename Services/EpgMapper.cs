@@ -59,8 +59,17 @@ namespace WaxIPTV.Services
             var channelsByTvgId = channels
                 .Where(c => !string.IsNullOrEmpty(c.TvgId))
                 .ToDictionary(c => c.TvgId!, c => c, StringComparer.OrdinalIgnoreCase);
+            // Build a lookup of channels keyed by normalised names. Some playlists include duplicate
+            // names such as "Channel", "Channel HD", "Channel 4K" which normalise to the same key.
+            // Group the channels by normalised name and choose the first channel that has a TVG ID
+            // as the representative for that name; otherwise pick the first in the group.  This
+            // prevents duplicate keys from throwing and avoids losing EPG mapping for all entries.
             var channelsByNormName = channels
-                .ToDictionary(c => NormalizeName(c.Name), c => c, StringComparer.OrdinalIgnoreCase);
+                .GroupBy(c => NormalizeName(c.Name), StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.FirstOrDefault(x => !string.IsNullOrEmpty(x.TvgId)) ?? g.First(),
+                    StringComparer.OrdinalIgnoreCase);
             var channelIndex = channels
                 .Select((c, i) => new { c.Id, Index = i })
                 .ToDictionary(x => x.Id, x => x.Index, StringComparer.OrdinalIgnoreCase);
@@ -72,12 +81,16 @@ namespace WaxIPTV.Services
                 foreach (var prog in chunk)
                 {
                     Channel? match = null;
-                    if (!string.IsNullOrEmpty(prog.ChannelId) && channelsByTvgId.TryGetValue(prog.ChannelId, out var byId))
+                    // Skip programmes with no channel ID to avoid KeyNotFound exceptions
+                    if (string.IsNullOrWhiteSpace(prog.ChannelId))
+                        continue;
+                    if (channelsByTvgId.TryGetValue(prog.ChannelId, out var byId))
                     {
                         match = byId;
                     }
                     else if (channelNames.TryGetValue(prog.ChannelId, out var displayName))
                     {
+                        // First attempt an exact normalised match using overrides and known names
                         var norm = NormalizeName(displayName);
                         if (overrides.TryGetValue(norm, out var overrideTvgId) &&
                             channelsByTvgId.TryGetValue(overrideTvgId, out var overrideChannel))
@@ -87,12 +100,31 @@ namespace WaxIPTV.Services
                         if (match == null && channelsByNormName.TryGetValue(norm, out var byName))
                         {
                             match = byName;
+                            // Update the channel's TVG ID if it differs from the programme's channel ID to improve future lookups
                             if (!string.IsNullOrEmpty(prog.ChannelId) && (!string.Equals(byName.TvgId, prog.ChannelId, StringComparison.OrdinalIgnoreCase)))
                             {
                                 var updated = byName with { TvgId = prog.ChannelId };
                                 channels[channelIndex[byName.Id]] = updated;
                                 channelsByNormName[norm] = updated;
                                 channelsByTvgId[prog.ChannelId] = updated;
+                            }
+                        }
+                        // If still no match, attempt a fuzzy match based on Levenshtein similarity
+                        if (match == null)
+                        {
+                            var fuzzy = FindBestChannel(displayName, channelsByNormName);
+                            if (fuzzy != null)
+                            {
+                                match = fuzzy;
+                                // As above, update the TVG ID to the XMLTV channel id for consistency
+                                var normF = NormalizeName(displayName);
+                                if (!string.IsNullOrEmpty(prog.ChannelId) && (!string.Equals(fuzzy.TvgId, prog.ChannelId, StringComparison.OrdinalIgnoreCase)))
+                                {
+                                    var updated = fuzzy with { TvgId = prog.ChannelId };
+                                    channels[channelIndex[fuzzy.Id]] = updated;
+                                    channelsByNormName[normF] = updated;
+                                    channelsByTvgId[prog.ChannelId] = updated;
+                                }
                             }
                         }
                     }
@@ -123,26 +155,109 @@ namespace WaxIPTV.Services
         /// <returns>A normalised channel name.</returns>
         public static string NormalizeName(string name)
         {
+            // Return empty string for null or whitespace names
             if (string.IsNullOrWhiteSpace(name))
                 return string.Empty;
-            // Lowercase and remove non-alphanumeric characters
-            var sb = new StringBuilder();
-            foreach (var ch in name.ToLowerInvariant())
+            // Convert to lowercase and replace ampersands with "and" to unify variations like "A&E" and "A and E"
+            var lower = name.ToLowerInvariant().Replace("&", "and");
+            // Remove any character that is not a letter or digit to collapse punctuation and spaces
+            var sb = new StringBuilder(lower.Length);
+            foreach (var ch in lower)
             {
                 if (char.IsLetterOrDigit(ch))
                     sb.Append(ch);
             }
             var norm = sb.ToString();
-            // Remove common suffixes
-            foreach (var suffix in new[] { "uhd", "hd", "4k" })
+            // Remove one common suffix if present.  This helps match variations like "channelhd", "networkusa", etc.
+            var suffixes = new[] { "uhd", "hd", "fhd", "4k", "sd", "tv", "channel", "network", "us", "usa", "uk", "ca", "de" };
+            foreach (var suffix in suffixes)
             {
-                if (norm.EndsWith(suffix))
+                if (norm.EndsWith(suffix, StringComparison.Ordinal))
                 {
                     norm = norm.Substring(0, norm.Length - suffix.Length);
                     break;
                 }
             }
             return norm;
+        }
+
+        /// <summary>
+        /// Computes the Levenshtein distance between two strings.  This value
+        /// represents the number of single-character edits (insertions,
+        /// deletions or substitutions) required to transform one string into
+        /// the other.  The implementation is iterative to avoid recursion
+        /// overhead and handles empty strings gracefully.
+        /// </summary>
+        private static int LevenshteinDistance(string s, string t)
+        {
+            if (string.IsNullOrEmpty(s)) return string.IsNullOrEmpty(t) ? 0 : t.Length;
+            if (string.IsNullOrEmpty(t)) return s.Length;
+            var m = s.Length;
+            var n = t.Length;
+            var d = new int[m + 1, n + 1];
+            for (int i = 0; i <= m; i++) d[i, 0] = i;
+            for (int j = 0; j <= n; j++) d[0, j] = j;
+            for (int i = 1; i <= m; i++)
+            {
+                var si = s[i - 1];
+                for (int j = 1; j <= n; j++)
+                {
+                    var cost = si == t[j - 1] ? 0 : 1;
+                    d[i, j] = Math.Min(
+                        Math.Min(d[i - 1, j] + 1,    // deletion
+                                 d[i, j - 1] + 1),    // insertion
+                        d[i - 1, j - 1] + cost        // substitution
+                    );
+                }
+            }
+            return d[m, n];
+        }
+
+        /// <summary>
+        /// Computes a similarity score between two strings using the
+        /// Levenshtein distance.  The score is 1.0 for identical strings
+        /// and approaches 0.0 as they diverge.  It is calculated as
+        /// 1 - (distance / maxLength).  When both strings are empty,
+        /// the score is 1.0.  When only one is empty, the score is 0.0.
+        /// </summary>
+        private static double Similarity(string a, string b)
+        {
+            if (string.IsNullOrEmpty(a) && string.IsNullOrEmpty(b)) return 1.0;
+            if (string.IsNullOrEmpty(a) || string.IsNullOrEmpty(b)) return 0.0;
+            var dist = LevenshteinDistance(a, b);
+            var maxLen = Math.Max(a.Length, b.Length);
+            return 1.0 - (double)dist / maxLen;
+        }
+
+        /// <summary>
+        /// Attempts to find the channel from the playlist whose normalised name
+        /// best matches the given XMLTV display name.  A simple similarity
+        /// metric based on the Levenshtein distance is used.  If the best
+        /// match has a score below 0.4, null is returned to avoid spurious
+        /// associations.  This fuzzy matching is only used when no exact
+        /// match is found via TVG ID or normalised names.
+        /// </summary>
+        /// <param name="displayName">The XMLTV channel display name.</param>
+        /// <param name="channelsByNormName">Lookup of normalised playlist channel names to channels.</param>
+        /// <returns>A channel if a sufficiently similar match exists; otherwise null.</returns>
+        private static Channel? FindBestChannel(string displayName, Dictionary<string, Channel> channelsByNormName)
+        {
+            if (string.IsNullOrWhiteSpace(displayName) || channelsByNormName.Count == 0)
+                return null;
+            var normDisplay = NormalizeName(displayName);
+            double bestScore = 0.0;
+            Channel? best = null;
+            foreach (var kv in channelsByNormName)
+            {
+                var score = Similarity(normDisplay, kv.Key);
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    best = kv.Value;
+                }
+            }
+            // Require a reasonable threshold to avoid incorrect matches
+            return bestScore >= 0.4 ? best : null;
         }
     }
 }

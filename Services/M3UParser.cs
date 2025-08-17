@@ -51,9 +51,17 @@ namespace WaxIPTV.Services
                 {
                     // We have a stream URL and corresponding metadata
                     meta.TryGetValue("tvg-id", out var tvgId);
+                    // Some playlists use 'logo' instead of 'tvg-logo'.  Fall back accordingly.
                     meta.TryGetValue("tvg-logo", out var logo);
+                    if (string.IsNullOrWhiteSpace(logo) && meta.TryGetValue("logo", out var logoAlt))
+                    {
+                        logo = logoAlt;
+                    }
                     meta.TryGetValue("group-title", out var group);
-                    var name = title ?? tvgId ?? "Channel";
+                    // Display name precedence: explicit title from EXTINF, then tvg-name, then tvg-id
+                    meta.TryGetValue("tvg-name", out var tvgName);
+                    var name = title ?? tvgName ?? tvgId ?? "Channel";
+                    // Use the tvg-id if present as the id; otherwise derive from name
                     var id = (tvgId ?? name).ToLowerInvariant().Replace(' ', '-');
                     channels.Add(new Channel(id, name, group, logo, line, tvgId));
                     // Reset for the next entry

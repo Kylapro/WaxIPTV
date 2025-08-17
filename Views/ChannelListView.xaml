@@ -10,9 +10,17 @@
         consumer (e.g. MainWindow) to immediately start playback.
     -->
     <ListBox x:Name="ChannelList"
-             DisplayMemberPath="Name"
              Background="{DynamicResource SurfaceBrush}"
              BorderBrush="{DynamicResource DividerBrush}"
              BorderThickness="1"
-             MouseDoubleClick="ChannelList_MouseDoubleClick"/>
+             MouseDoubleClick="ChannelList_MouseDoubleClick">
+        <ListBox.ItemTemplate>
+            <DataTemplate>
+                <StackPanel Orientation="Horizontal" Margin="0,2">
+                    <Image Source="{Binding Logo}" Width="24" Height="24" Margin="0,0,6,0"/>
+                    <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
+                </StackPanel>
+            </DataTemplate>
+        </ListBox.ItemTemplate>
+    </ListBox>
 </UserControl>

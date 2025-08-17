@@ -305,19 +305,15 @@ namespace WaxIPTV.ViewModels
 
         // ----- Save/Close commands (unchanged except theme handling) -----
         [RelayCommand]
-        private void SaveAndClose(Window window)
+        private async Task SaveAndClose(Window window)
         {
-            // Basic validation
+            // Basic validation: require a playlist, but EPG can be left blank
             if (string.IsNullOrWhiteSpace(playlistUrl))
             {
                 MessageBox.Show("Please set a Playlist URL or file.", "Settings", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
-            if (string.IsNullOrWhiteSpace(xmltvUrl))
-            {
-                MessageBox.Show("Please set an EPG (XMLTV) URL or file.", "Settings", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
+            // Validate player paths only if that player is selected
             if (player.Equals("mpv", StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(mpvPath))
             {
                 MessageBox.Show("Please set the path to mpv.exe.", "Settings", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -343,6 +339,12 @@ namespace WaxIPTV.ViewModels
 
             // Apply the theme immediately
             ApplyTheme();
+
+            // If the user supplied an EPG source, trigger a download before closing
+            if (!string.IsNullOrWhiteSpace(xmltvUrl))
+            {
+                await DownloadEpg();
+            }
 
             window.DialogResult = true;
             window.Close();

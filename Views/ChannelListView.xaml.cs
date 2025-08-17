@@ -17,10 +17,13 @@ namespace WaxIPTV.Views
     public partial class ChannelListView : UserControl
     {
         /// <summary>
-        /// Raised when a channel is activated via double click.  The
-        /// accompanying Channel object is passed as the event argument.
+        /// Raised when a channel is activated via double click.  The event
+        /// carries a <see cref="ChannelEventArgs"/> instance which
+        /// encapsulates the activated channel.  A custom event args type is
+        /// used because <see cref="EventHandler{TEventArgs}"/> requires
+        /// that T derives from <see cref="EventArgs"/>.
         /// </summary>
-        public event EventHandler<Channel>? ChannelActivated;
+        public event EventHandler<ChannelEventArgs>? ChannelActivated;
 
         public ChannelListView()
         {
@@ -79,7 +82,7 @@ namespace WaxIPTV.Views
         {
             if (ChannelList.SelectedItem is Channel ch)
             {
-                ChannelActivated?.Invoke(this, ch);
+                ChannelActivated?.Invoke(this, new ChannelEventArgs(ch));
             }
         }
 

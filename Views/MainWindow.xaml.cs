@@ -450,7 +450,25 @@ namespace WaxIPTV.Views
                 {
                     var channelNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                     var programmesEnum = Xmltv.StreamProgrammes(xml, channelNames);
-                    programmesDict = EpgMapper.MapProgrammesInBatches(programmesEnum, _channels, channelNames, 200);
+                    // Pass any manual EPG ID aliases from settings to the mapper.  These aliases
+                    // allow users to map playlist channel names to specific XMLTV IDs when
+                    // automatic or fuzzy matching fails.  The aliases dictionary is copied to
+                    // ensure case-insensitive keys.
+                    Dictionary<string, string>? overrides = null;
+                    try
+                    {
+                        var aliasMap = _settingsService.Settings.EpgIdAliases;
+                        if (aliasMap != null && aliasMap.Count > 0)
+                        {
+                            overrides = new Dictionary<string, string>(aliasMap, StringComparer.OrdinalIgnoreCase);
+                        }
+                    }
+                    catch
+                    {
+                        // ignore alias loading errors and fall back to null
+                        overrides = null;
+                    }
+                    programmesDict = EpgMapper.MapProgrammesInBatches(programmesEnum, _channels, channelNames, 200, overrides);
                     // Trim programmes beyond 7 days to limit memory usage
                     var cutoff = DateTimeOffset.UtcNow.AddDays(7);
                     foreach (var kv in programmesDict)
@@ -550,9 +568,11 @@ namespace WaxIPTV.Views
         /// Invoked when a channel is activated by double click from the
         /// ChannelList user control.  Delegates to PlayChannelAsync.
         /// </summary>
-        private async void ChannelList_ChannelActivated(object? sender, Channel ch)
+        private async void ChannelList_ChannelActivated(object? sender, ChannelEventArgs e)
         {
-            await PlayChannelAsync(ch);
+            // When a channel is double‑clicked in the list view, invoke playback
+            // using the encapsulated Channel from the event args.
+            await PlayChannelAsync(e.Channel);
         }
 
         /// <summary>

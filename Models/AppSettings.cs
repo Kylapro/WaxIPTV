@@ -48,5 +48,16 @@ namespace WaxIPTV.Models
         /// </summary>
         [JsonPropertyName("epgRefreshHours")]
         public int EpgRefreshHours { get; set; } = 12;
+
+        /// <summary>
+        /// Optional mapping of playlist channel names to XMLTV channel identifiers.  When provided,
+        /// these aliases override automatic name matching and fuzzy matching in the EPG mapper.
+        /// The key should be the normalised channel name (as displayed in the UI) and the value
+        /// should be the XMLTV channel ID from the EPG feed.  Entries are compared in a
+        /// case-insensitive manner.  If an alias is specified for a channel, the EPG will
+        /// always use the mapped ID regardless of other matches.
+        /// </summary>
+        [JsonPropertyName("epgIdAliases")]
+        public Dictionary<string, string>? EpgIdAliases { get; set; }
     }
 }
