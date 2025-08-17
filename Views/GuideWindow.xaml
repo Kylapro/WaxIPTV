@@ -82,66 +82,78 @@
         </ListBox>
 
         <!-- Timeline area -->
-        <ScrollViewer x:Name="TimelineScrollViewer"
-                      Grid.Row="1" Grid.Column="1"
-                      HorizontalScrollBarVisibility="Auto"
-                      VerticalScrollBarVisibility="Auto"
-                      ScrollChanged="TimelineScrollViewer_ScrollChanged">
-            <StackPanel>
-                <!-- Timeline header: draws time labels across the timeline -->
-                <Canvas x:Name="TimelineHeaderCanvas" Height="30" Background="{DynamicResource SurfaceBrush}"/>
-                <!-- Timeline rows: one per channel; virtualization enabled for better performance -->
-                <ItemsControl x:Name="TimelineItemsControl"
-                              VirtualizingPanel.IsVirtualizing="True"
-                              VirtualizingPanel.VirtualizationMode="Recycling"
-                              ScrollViewer.CanContentScroll="True">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <VirtualizingStackPanel/>
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <!-- Each row consists of a canvas containing programme blocks -->
-                            <Canvas Height="40" Background="{DynamicResource SurfaceBrush}">
-                                <ItemsControl ItemsSource="{Binding ProgrammeSlots}"
-                                              VirtualizingPanel.IsVirtualizing="True"
-                                              VirtualizingPanel.VirtualizationMode="Recycling"
-                                              ScrollViewer.CanContentScroll="True">
-                                    <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate>
-                                            <Canvas/>
-                                        </ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
-                                    <ItemsControl.ItemContainerStyle>
-                                        <Style TargetType="ContentPresenter">
-                                            <Setter Property="Canvas.Left" Value="{Binding Offset}"/>
-                                            <Setter Property="Canvas.Width" Value="{Binding Width}"/>
-                                            <Setter Property="Canvas.Top" Value="4"/>
-                                        </Style>
-                                    </ItemsControl.ItemContainerStyle>
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <Border Background="{DynamicResource AccentBrush}"
-                                                    BorderBrush="{DynamicResource AccentBrush}"
-                                                    BorderThickness="1"
-                                                    CornerRadius="4"
-                                                    ToolTip="{Binding ToolTip}"
-                                                    MouseLeftButtonUp="ProgrammeSlot_Click">
-                                                <TextBlock Text="{Binding DisplayTitle}"
-                                                           Foreground="{DynamicResource TextBrush}"
-                                                           FontSize="12"
-                                                           Padding="4,2"
-                                                           TextTrimming="CharacterEllipsis"/>
-                                            </Border>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </Canvas>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </StackPanel>
-        </ScrollViewer>
+          <ScrollViewer x:Name="TimelineScrollViewer"
+                        Grid.Row="1" Grid.Column="1"
+                        HorizontalScrollBarVisibility="Auto"
+                        VerticalScrollBarVisibility="Auto"
+                        ScrollChanged="TimelineScrollViewer_ScrollChanged">
+              <Grid x:Name="TimelineGrid">
+                  <Grid.RowDefinitions>
+                      <RowDefinition Height="30"/>
+                      <RowDefinition Height="*"/>
+                  </Grid.RowDefinitions>
+                  <!-- Timeline header: draws time labels across the timeline -->
+                  <Canvas x:Name="TimelineHeaderCanvas" Grid.Row="0" Height="30"
+                          Background="{DynamicResource SurfaceBrush}"/>
+                  <!-- Timeline rows: one per channel; virtualization enabled for better performance -->
+                  <ItemsControl x:Name="TimelineItemsControl" Grid.Row="1"
+                                VirtualizingPanel.IsVirtualizing="True"
+                                VirtualizingPanel.VirtualizationMode="Recycling"
+                                ScrollViewer.CanContentScroll="True">
+                      <ItemsControl.ItemsPanel>
+                          <ItemsPanelTemplate>
+                              <VirtualizingStackPanel/>
+                          </ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                          <DataTemplate>
+                              <!-- Each row consists of a canvas containing programme blocks -->
+                              <Canvas Height="40" Background="{DynamicResource SurfaceBrush}">
+                                  <ItemsControl ItemsSource="{Binding ProgrammeSlots}"
+                                                VirtualizingPanel.IsVirtualizing="True"
+                                                VirtualizingPanel.VirtualizationMode="Recycling"
+                                                ScrollViewer.CanContentScroll="True">
+                                      <ItemsControl.ItemsPanel>
+                                          <ItemsPanelTemplate>
+                                              <Canvas/>
+                                          </ItemsPanelTemplate>
+                                      </ItemsControl.ItemsPanel>
+                                      <ItemsControl.ItemContainerStyle>
+                                          <Style TargetType="ContentPresenter">
+                                              <Setter Property="Canvas.Left" Value="{Binding Offset}"/>
+                                              <Setter Property="Canvas.Width" Value="{Binding Width}"/>
+                                              <Setter Property="Canvas.Top" Value="4"/>
+                                          </Style>
+                                      </ItemsControl.ItemContainerStyle>
+                                      <ItemsControl.ItemTemplate>
+                                          <DataTemplate>
+                                              <Border Background="{DynamicResource AccentBrush}"
+                                                      BorderBrush="{DynamicResource AccentBrush}"
+                                                      BorderThickness="1"
+                                                      CornerRadius="4"
+                                                      ToolTip="{Binding ToolTip}"
+                                                      MouseLeftButtonUp="ProgrammeSlot_Click">
+                                                  <TextBlock Text="{Binding DisplayTitle}"
+                                                             Foreground="{DynamicResource TextBrush}"
+                                                             FontSize="12"
+                                                             Padding="4,2"
+                                                             TextTrimming="CharacterEllipsis"/>
+                                              </Border>
+                                          </DataTemplate>
+                                      </ItemsControl.ItemTemplate>
+                                  </ItemsControl>
+                              </Canvas>
+                          </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <!-- Now indicator line spanning header and rows -->
+                  <Canvas x:Name="NowIndicatorCanvas" Grid.RowSpan="2" IsHitTestVisible="False"
+                          Width="{Binding ElementName=TimelineHeaderCanvas, Path=Width}"
+                          Height="{Binding ElementName=TimelineGrid, Path=ActualHeight}">
+                      <Rectangle x:Name="NowLine" Width="2" Fill="{DynamicResource AccentBrush}"
+                                 Height="{Binding ActualHeight, RelativeSource={RelativeSource AncestorType=Canvas}}"/>
+                  </Canvas>
+              </Grid>
+          </ScrollViewer>
     </Grid>
 </Window>
