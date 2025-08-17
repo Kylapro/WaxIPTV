@@ -7,6 +7,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using WaxIPTV.Models;
 
 namespace WaxIPTV.Views
@@ -37,6 +38,8 @@ namespace WaxIPTV.Views
         // Timeline settings
         private readonly TimeSpan _windowDuration = TimeSpan.FromHours(3);
         private readonly double _timelineWidth = 1800; // pixels representing the full window duration
+        private DateTimeOffset _windowStartLocal;
+        private DispatcherTimer? _nowIndicatorTimer;
 
         // Event triggered when a channel is selected from the guide
         public event EventHandler<Channel>? ChannelSelected;
@@ -62,6 +65,7 @@ namespace WaxIPTV.Views
             _allChannels = channels;
             _programmes = programmes;
             Loaded += OnLoaded;
+            Unloaded += (_, __) => _nowIndicatorTimer?.Stop();
         }
 
         private void OnLoaded(object sender, RoutedEventArgs e)
@@ -223,7 +227,7 @@ namespace WaxIPTV.Views
             var rows = new List<GuideRow>(channels.Count);
             // Determine the start and end of the window in UTC.  Programme times
             // are stored in UTC, but we convert to local time for display
-            var windowStartLocal = DateTimeOffset.Now;
+            var windowStartLocal = _windowStartLocal;
             var windowEndLocal = windowStartLocal + _windowDuration;
             var totalMinutes = _windowDuration.TotalMinutes;
             var pixelsPerMinute = _timelineWidth / totalMinutes;
@@ -279,7 +283,9 @@ namespace WaxIPTV.Views
         {
             TimelineHeaderCanvas.Children.Clear();
             TimelineHeaderCanvas.Width = _timelineWidth;
-            var windowStartLocal = DateTimeOffset.Now;
+            TimelineItemsControl.Width = _timelineWidth;
+            TimelineGrid.Width = _timelineWidth;
+            var windowStartLocal = _windowStartLocal;
             var intervalMinutes = 30;
             var totalIntervals = (int)(_windowDuration.TotalMinutes / intervalMinutes);
             var pixelsPerMinute = _timelineWidth / _windowDuration.TotalMinutes;
@@ -306,6 +312,26 @@ namespace WaxIPTV.Views
                 Canvas.SetTop(line, 0);
                 TimelineHeaderCanvas.Children.Add(line);
             }
+        }
+
+        /// <summary>
+        /// Updates the vertical indicator showing the current time on the timeline.
+        /// Hides the indicator if the current time falls outside the visible window.
+        /// </summary>
+        private void UpdateNowIndicator()
+        {
+            var now = DateTimeOffset.Now;
+            var elapsed = now - _windowStartLocal;
+            if (elapsed < TimeSpan.Zero || elapsed > _windowDuration)
+            {
+                NowLine.Visibility = Visibility.Collapsed;
+                return;
+            }
+            var pixelsPerMinute = _timelineWidth / _windowDuration.TotalMinutes;
+            var offsetPx = elapsed.TotalMinutes * pixelsPerMinute;
+            Canvas.SetLeft(NowLine, offsetPx);
+            NowLine.Visibility = Visibility.Visible;
+            NowLine.Height = TimelineGrid.ActualHeight;
         }
 
         /// <summary>
@@ -398,7 +424,7 @@ namespace WaxIPTV.Views
                 ProgrammeSlots = new List<ProgrammeSlot>()
             };
             // Determine time window in local time
-            var windowStartLocal = DateTimeOffset.Now;
+            var windowStartLocal = _windowStartLocal;
             var windowEndLocal = windowStartLocal + _windowDuration;
             var totalMinutes = _windowDuration.TotalMinutes;
             var pixelsPerMinute = _timelineWidth / totalMinutes;
@@ -448,10 +474,16 @@ namespace WaxIPTV.Views
             _buildRowsCts?.Cancel();
             _buildRowsCts = new System.Threading.CancellationTokenSource();
             var token = _buildRowsCts.Token;
-            // Clear existing rows and draw header on UI thread
+            // Reset timeline start and clear existing rows
+            _windowStartLocal = DateTimeOffset.Now;
             _allGuideRows.Clear();
             _filteredRows.Clear();
             DrawTimelineHeader();
+            UpdateNowIndicator();
+            _nowIndicatorTimer?.Stop();
+            _nowIndicatorTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(1) };
+            _nowIndicatorTimer.Tick += (_, __) => UpdateNowIndicator();
+            _nowIndicatorTimer.Start();
             // Kick off background task
             _ = Task.Run(async () =>
             {
@@ -467,6 +499,7 @@ namespace WaxIPTV.Views
                     {
                         _allGuideRows.Add(row);
                         _filteredRows.Add(row);
+                        UpdateNowIndicator();
                     });
                     processed++;
                     if (processed % 20 == 0)
