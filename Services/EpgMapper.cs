@@ -59,9 +59,14 @@ namespace WaxIPTV.Services
         {
             using var scope = AppLog.BeginScope("EpgMap");
             overrides ??= new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            var channelsByTvgId = channels
-                .Where(c => !string.IsNullOrEmpty(c.TvgId))
-                .ToDictionary(c => c.TvgId!, c => c, StringComparer.OrdinalIgnoreCase);
+            var channelsByTvgId = new Dictionary<string, Channel>(StringComparer.OrdinalIgnoreCase);
+            foreach (var c in channels.Where(c => !string.IsNullOrEmpty(c.TvgId)))
+            {
+                if (!channelsByTvgId.TryAdd(c.TvgId!, c))
+                {
+                    AppLog.Logger.Warning("Duplicate TVG ID {TvgId} encountered; keeping first occurrence", c.TvgId);
+                }
+            }
             // Build a lookup of channels keyed by normalised names. Some playlists include duplicate
             // names such as "Channel", "Channel HD", "Channel 4K" which normalise to the same key.
             // Group the channels by normalised name and choose the first channel that has a TVG ID
