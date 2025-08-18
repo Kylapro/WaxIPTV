@@ -1,0 +1,12 @@
+﻿[EPG Diagnostics] 2025-08-18 14:58:59
+Playlist channels: 3
+Mapped channels:   3
+Unmatched (playlist but no EPG): 0
+
+
+Edit settings.json: add epgIdAliases entries like:
+{
+  "epgIdAliases": {
+    "normalizedplaylistname": "xmltv-channel-id"
+  }
+}
