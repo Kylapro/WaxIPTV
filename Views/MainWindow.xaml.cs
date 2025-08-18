@@ -470,6 +470,10 @@ namespace WaxIPTV.Views
                 // Ignore UI update errors; loading will continue without a progress indicator.
             }
 
+            // Clear existing EPG data so the UI can repopulate as new data streams in.
+            _programmes.Clear();
+            UpdateNowNextForSelected();
+
             var programmesDict = new Dictionary<string, List<Programme>>();
             var cachePath = GetEpgCachePath();
             string? xml = null;
@@ -611,7 +615,22 @@ namespace WaxIPTV.Views
 
                     // Map the programmes to channels using the batched mapper. The stream
                     // enumerates lazily, keeping memory usage low when handling large EPGs.
-                    programmesDict = EpgMapper.MapProgrammesInBatches(programmeStream, _channels, channelNames, 200, overrides);
+                    // Provide a callback so the UI can be updated as each batch is processed.
+                    programmesDict = EpgMapper.MapProgrammesInBatches(
+                        programmeStream,
+                        _channels,
+                        channelNames,
+                        200,
+                        overrides,
+                        updates =>
+                        {
+                            Dispatcher.Invoke(() =>
+                            {
+                                foreach (var kv in updates)
+                                    _programmes[kv.Key] = kv.Value;
+                                UpdateNowNextForSelected();
+                            });
+                        });
                     AppLog.Logger.Information("Mapping {ProgCount} programmes", totalProgrammes);
                     // Trim programmes beyond 7 days to limit memory usage
                     var cutoff = DateTimeOffset.UtcNow.AddDays(7);
