@@ -560,9 +560,11 @@ namespace WaxIPTV.Views
             // 4) Parse the XML if available
             if (!string.IsNullOrEmpty(xml))
             {
-                try
+                await System.Threading.Tasks.Task.Run(() =>
                 {
-                    AppLog.Logger.Information("Parsing EPG XML");
+                    try
+                    {
+                        AppLog.Logger.Information("Parsing EPG XML");
                     var channelNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                     int totalProgrammes = 0;
                     int shiftMinutes = 0;
@@ -739,6 +741,7 @@ namespace WaxIPTV.Views
                     programmesDict.Clear();
                     AppLog.Logger.Error(ex, "Failed to parse or map EPG");
                 }
+                });
             }
 
             _programmes = programmesDict;
