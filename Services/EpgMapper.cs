@@ -55,7 +55,9 @@ namespace WaxIPTV.Services
             List<Channel> channels,
             Dictionary<string, string> channelNames,
             int batchSize,
-            Dictionary<string, string>? overrides = null)
+            Dictionary<string, string>? overrides = null,
+            Dictionary<string, List<Programme>>? destination = null,
+            Action<Dictionary<string, List<Programme>>>? progress = null)
         {
             using var scope = AppLog.BeginScope("EpgMap");
             overrides ??= new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -120,7 +122,7 @@ namespace WaxIPTV.Services
                 }
             }
 
-            var result = new Dictionary<string, List<Programme>>();
+            var result = destination ?? new Dictionary<string, List<Programme>>();
 
             foreach (var chunk in programmes.Chunk(batchSize))
             {
@@ -220,14 +222,18 @@ namespace WaxIPTV.Services
                     }
                     if (match != null)
                     {
-                        if (!result.TryGetValue(match.Id, out var list))
+                        lock (result)
                         {
-                            list = new List<Programme>();
-                            result[match.Id] = list;
+                            if (!result.TryGetValue(match.Id, out var list))
+                            {
+                                list = new List<Programme>();
+                                result[match.Id] = list;
+                            }
+                            list.Add(prog);
                         }
-                        list.Add(prog);
                     }
                 }
+                progress?.Invoke(result);
             }
 
             foreach (var list in result.Values)

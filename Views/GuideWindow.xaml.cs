@@ -236,7 +236,12 @@ namespace WaxIPTV.Views
                     ChannelIcon = LoadIcon(ch.Logo),
                     ProgrammeSlots = new List<ProgrammeSlot>()
                 };
-                if (_programmes.TryGetValue(ch.Id, out var progs))
+                List<Programme>? progs;
+                lock (_programmes)
+                {
+                    _programmes.TryGetValue(ch.Id, out progs);
+                }
+                if (progs != null)
                 {
                     foreach (var prog in progs)
                     {
@@ -403,7 +408,12 @@ namespace WaxIPTV.Views
             var totalMinutes = _windowDuration.TotalMinutes;
             var pixelsPerMinute = _timelineWidth / totalMinutes;
             // Populate programme slots
-            if (_programmes.TryGetValue(ch.Id, out var progs))
+            List<Programme>? progs;
+            lock (_programmes)
+            {
+                _programmes.TryGetValue(ch.Id, out progs);
+            }
+            if (progs != null)
             {
                 foreach (var prog in progs)
                 {

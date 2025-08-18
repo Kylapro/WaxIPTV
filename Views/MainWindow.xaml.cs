@@ -470,7 +470,7 @@ namespace WaxIPTV.Views
                 // Ignore UI update errors; loading will continue without a progress indicator.
             }
 
-            var programmesDict = new Dictionary<string, List<Programme>>();
+            _programmes = new Dictionary<string, List<Programme>>();
             var cachePath = GetEpgCachePath();
             string? xml = null;
 
@@ -611,13 +611,34 @@ namespace WaxIPTV.Views
 
                     // Map the programmes to channels using the batched mapper. The stream
                     // enumerates lazily, keeping memory usage low when handling large EPGs.
-                    programmesDict = EpgMapper.MapProgrammesInBatches(programmeStream, _channels, channelNames, 200, overrides);
+                    EpgMapper.MapProgrammesInBatches(programmeStream, _channels, channelNames, 200, overrides, _programmes, dict =>
+                    {
+                        Dispatcher.Invoke(() =>
+                        {
+                            if (ChannelList.GetSelected() is Channel selected)
+                            {
+                                List<Programme>? progs = null;
+                                lock (dict)
+                                {
+                                    dict.TryGetValue(selected.Id, out progs);
+                                }
+                                if (progs != null)
+                                {
+                                    var (now, next) = EpgHelpers.GetNowNext(progs, DateTimeOffset.UtcNow);
+                                    NowNext.UpdateProgrammes(now, next);
+                                }
+                            }
+                        });
+                    });
                     AppLog.Logger.Information("Mapping {ProgCount} programmes", totalProgrammes);
                     // Trim programmes beyond 7 days to limit memory usage
                     var cutoff = DateTimeOffset.UtcNow.AddDays(7);
-                    foreach (var kv in programmesDict)
+                    lock (_programmes)
                     {
-                        kv.Value.RemoveAll(p => p.EndUtc > cutoff);
+                        foreach (var kv in _programmes)
+                        {
+                            kv.Value.RemoveAll(p => p.EndUtc > cutoff);
+                        }
                     }
                     _epgLoadedAt = DateTimeOffset.UtcNow;
 
@@ -632,9 +653,9 @@ namespace WaxIPTV.Views
                         // Compute counts
                         int epgChannelNames = channelNames.Count;
                         int totalProgrammesCount = totalProgrammes;
-                        int mappedChannelsCount = programmesDict.Count;
+                        int mappedChannelsCount = _programmes.Count;
                         int mappedProgrammesCount = 0;
-                        foreach (var list in programmesDict.Values)
+                        foreach (var list in _programmes.Values)
                         {
                             mappedProgrammesCount += list.Count;
                         }
@@ -650,7 +671,7 @@ namespace WaxIPTV.Views
 
                         // Build diagnostics file listing unmatched channels and alias suggestions
                         var allPlaylist = _channels ?? new List<Channel>();
-                        var mappedSet = new HashSet<string>(programmesDict.Keys);
+                        var mappedSet = new HashSet<string>(_programmes.Keys);
                         var missing = allPlaylist.Where(ch => !mappedSet.Contains(ch.Id)).ToList();
 
                         // Write diagnostics file
@@ -738,14 +759,13 @@ namespace WaxIPTV.Views
                 }
                 catch (Exception ex)
                 {
-                    programmesDict.Clear();
+                    _programmes.Clear();
                     AppLog.Logger.Error(ex, "Failed to parse or map EPG");
                 }
                 });
             }
 
-            _programmes = programmesDict;
-            AppLog.Logger.Information("EPG load complete with {Programmes} programmes", programmesDict.Sum(kv => kv.Value.Count));
+            AppLog.Logger.Information("EPG load complete with {Programmes} programmes", _programmes.Sum(kv => kv.Value.Count));
 
             // Hide the main window EPG loading indicator when loading completes.  Also update
             // the status text to indicate completion.  Use Dispatcher to marshal back to
@@ -786,7 +806,12 @@ namespace WaxIPTV.Views
             }
             AppLog.Logger.Information("Channel selected {Name}", selected.Name);
             SelectedChannelTitle.Text = selected.Name;
-            if (_programmes.TryGetValue(selected.Id, out var progs))
+            List<Programme>? progs;
+            lock (_programmes)
+            {
+                _programmes.TryGetValue(selected.Id, out progs);
+            }
+            if (progs != null)
             {
                 var (now, next) = EpgHelpers.GetNowNext(progs, DateTimeOffset.UtcNow);
                 NowNext.UpdateProgrammes(now, next);
@@ -806,7 +831,12 @@ namespace WaxIPTV.Views
         {
             if (ChannelList.GetSelected() is not Channel selected)
                 return;
-            if (_programmes.TryGetValue(selected.Id, out var progs))
+            List<Programme>? progs;
+            lock (_programmes)
+            {
+                _programmes.TryGetValue(selected.Id, out progs);
+            }
+            if (progs != null)
             {
                 var (now, next) = EpgHelpers.GetNowNext(progs, DateTimeOffset.UtcNow);
                 NowNext.UpdateProgrammes(now, next);
