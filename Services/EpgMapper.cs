@@ -32,7 +32,7 @@ namespace WaxIPTV.Services
             Dictionary<string, string>? overrides = null)
         {
             AppLog.Logger.Information("Mapping {ProgCount} programmes", programmes.Count);
-            return MapProgrammesInBatches(programmes, channels, channelNames, int.MaxValue, overrides);
+            return MapProgrammesInBatches(programmes, channels, channelNames, int.MaxValue, overrides, null);
         }
 
         /// <summary>
@@ -55,7 +55,8 @@ namespace WaxIPTV.Services
             List<Channel> channels,
             Dictionary<string, string> channelNames,
             int batchSize,
-            Dictionary<string, string>? overrides = null)
+            Dictionary<string, string>? overrides = null,
+            IProgress<int>? progress = null)
         {
             using var scope = AppLog.BeginScope("EpgMap");
             overrides ??= new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -121,6 +122,7 @@ namespace WaxIPTV.Services
             }
 
             var result = new Dictionary<string, List<Programme>>();
+            int processed = 0;
 
             foreach (var chunk in programmes.Chunk(batchSize))
             {
@@ -228,6 +230,9 @@ namespace WaxIPTV.Services
                         list.Add(prog);
                     }
                 }
+
+                processed += chunk.Length;
+                progress?.Report(processed);
             }
 
             foreach (var list in result.Values)
