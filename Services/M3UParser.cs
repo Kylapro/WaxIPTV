@@ -62,8 +62,11 @@ namespace WaxIPTV.Services
                     meta.TryGetValue("tvg-name", out var tvgName);
                     var name = title ?? tvgName ?? tvgId ?? "Channel";
                     // Use the tvg-id if present as the id; otherwise derive from name
-                    var id = (tvgId ?? name).ToLowerInvariant().Replace(' ', '-');
-                    channels.Add(new Channel(id, name, group, logo, line, tvgId));
+                    var id = (tvgId ?? tvgName ?? name).ToLowerInvariant().Replace(' ', '-');
+                    // Pass the optional tvg-name through to the Channel record.  This
+                    // allows downstream EPG mapping to match on tvg-name when tvg-id
+                    // is absent or does not correspond to the XMLTV feed.
+                    channels.Add(new Channel(id, name, group, logo, line, tvgId, tvgName));
                     // Reset for the next entry
                     meta = null;
                     title = null;

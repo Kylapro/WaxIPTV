@@ -12,6 +12,7 @@ namespace WaxIPTV.Models
         string? Group,
         string? Logo,
         string StreamUrl,
-        string? TvgId = null
+        string? TvgId = null,
+        string? TvgName = null
     );
 }

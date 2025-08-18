@@ -41,6 +41,20 @@ namespace WaxIPTV.Views
         private string _searchTerm = string.Empty;
         private string? _selectedGroup = "All";
 
+        // Remember the last playlist and EPG keys so we can detect when
+        // the user changes inputs.  A key is the trimmed, lower-case URL or file path.
+        private string? _lastPlaylistKey;
+        private string? _lastEpgKey;
+
+        /// <summary>
+        /// Normalizes a playlist or EPG source string into a lowercase key.
+        /// Returns an empty string for null or whitespace.
+        /// </summary>
+        private static string KeyFor(string? s)
+        {
+            return string.IsNullOrWhiteSpace(s) ? string.Empty : s.Trim().ToLowerInvariant();
+        }
+
         public MainWindow()
         {
             InitializeComponent();
@@ -84,24 +98,28 @@ namespace WaxIPTV.Views
         /// <returns>Decoded XML string.</returns>
         private static string ConvertEpgBytesToString(byte[] bytes, string source)
         {
+            // Convert raw bytes representing an XMLTV document into a UTF‑8 string.  If the
+            // data is gzip‑compressed, decompress it before decoding.  Detection is
+            // performed both on the file extension (".gz") and on the gzip magic
+            // numbers (0x1F, 0x8B).  Any errors during decompression fall back to
+            // returning the raw bytes as UTF‑8.
             try
             {
-                if (!string.IsNullOrEmpty(source) && source.EndsWith(".gz", StringComparison.OrdinalIgnoreCase))
+                bool extIsGz = !string.IsNullOrEmpty(source) && source.EndsWith(".gz", StringComparison.OrdinalIgnoreCase);
+                bool magicIsGz = bytes.Length > 2 && bytes[0] == 0x1F && bytes[1] == 0x8B;
+                if (extIsGz || magicIsGz)
                 {
-                    using var input = new MemoryStream(bytes);
-                    using var gz = new GZipStream(input, CompressionMode.Decompress);
-                    using var output = new MemoryStream();
-                    gz.CopyTo(output);
-                    return Encoding.UTF8.GetString(output.ToArray());
+                    using var ms = new MemoryStream(bytes);
+                    using var gz = new GZipStream(ms, CompressionMode.Decompress);
+                    using var sr = new StreamReader(gz, Encoding.UTF8);
+                    return sr.ReadToEnd();
                 }
-                else
-                {
-                    return Encoding.UTF8.GetString(bytes);
-                }
+                // Not gzipped; decode directly.  Encoding.GetString will handle a BOM if present.
+                return Encoding.UTF8.GetString(bytes);
             }
             catch
             {
-                // Fallback to plain UTF-8 decoding if decompression fails
+                // Fallback: return the raw bytes as UTF‑8 if anything goes wrong.
                 return Encoding.UTF8.GetString(bytes);
             }
         }
@@ -153,7 +171,11 @@ namespace WaxIPTV.Views
             bool hasPlayer = _player != null;
             PlayButton.IsEnabled = PauseButton.IsEnabled = StopButton.IsEnabled = hasPlayer;
 
-            // Asynchronously load channels and EPG
+            // Remember the current playlist and EPG keys so that future calls can detect changes.
+            _lastPlaylistKey = KeyFor(settings.PlaylistUrl);
+            _lastEpgKey = KeyFor(settings.XmltvUrl);
+
+            // Asynchronously load channels
             await LoadChannelsAsync(settings.PlaylistUrl);
             ChannelList.SetItems(_channels);
             // Populate the group filter and apply default filtering.  This must be
@@ -162,7 +184,12 @@ namespace WaxIPTV.Views
             // ComboBox items and apply filtering based on the current search term and
             // selected group (initially "All").
             PopulateGroupFilterAndApply();
-            await LoadEpgAsync(settings.XmltvUrl, settings.EpgRefreshHours);
+
+            // Load the EPG with force so that the new playlist and EPG are fully mapped.  This
+            // initial load should bypass any refresh window and always parse and map the
+            // programmes.  Subsequent reloads will be controlled by the EPG refresh loop or
+            // user actions.
+            await LoadEpgAsync(settings.XmltvUrl, settings.EpgRefreshHours, force: true);
 
             // Update the UI for the first selection if any
             if (_channels.Count > 0)
@@ -228,6 +255,14 @@ namespace WaxIPTV.Views
             _settingsService.Load();
             var s = _settingsService.Settings;
 
+            // Update the last playlist and EPG keys so that subsequent calls to
+            // LoadEpgAsync can detect if these inputs change.  Using KeyFor
+            // normalises the URL or file path to lower‑case.  Setting these
+            // ahead of loading ensures that changes in the settings file will
+            // trigger a forced reload when necessary.
+            _lastPlaylistKey = KeyFor(s.PlaylistUrl);
+            _lastEpgKey = KeyFor(s.XmltvUrl);
+
             // Cancel any ongoing EPG refresh loop
             _epgRefreshCts?.Cancel();
 
@@ -292,6 +327,12 @@ namespace WaxIPTV.Views
             // Ensure latest settings are loaded
             _settingsService.Load();
             var s = _settingsService.Settings;
+
+            // Update the last playlist key so that if a new playlist file or URL
+            // is selected, the EPG loader can detect a change and reload the
+            // guide even if the EPG URL remains the same.  Do not update
+            // _lastEpgKey here since we are not reloading the EPG.
+            _lastPlaylistKey = KeyFor(s.PlaylistUrl);
             // Load channels only
             await LoadChannelsAsync(s.PlaylistUrl);
             ChannelList.SetItems(_channels);
@@ -327,7 +368,13 @@ namespace WaxIPTV.Views
                     if (Uri.TryCreate(source, UriKind.Absolute, out var uri) &&
                         (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
                     {
-                        using var client = new System.Net.Http.HttpClient();
+                        using var client = new System.Net.Http.HttpClient()
+                        {
+                            Timeout = TimeSpan.FromSeconds(15)
+                        };
+                        // Download playlist content with a reasonable timeout.  If the request
+                        // times out or fails, an exception will be caught below and the
+                        // placeholder channels will be used instead.
                         content = await client.GetStringAsync(uri);
                     }
                     else if (File.Exists(source))
@@ -351,9 +398,9 @@ namespace WaxIPTV.Views
                 // Provide placeholders when no channels loaded
                 channels = new List<Channel>
                 {
-                    new Channel("ch1", "Channel 1", null, null, "", null),
-                    new Channel("ch2", "Channel 2", null, null, "", null),
-                    new Channel("ch3", "Channel 3", null, null, "", null)
+                    new Channel("ch1", "Channel 1", null, null, "", null, null),
+                    new Channel("ch2", "Channel 2", null, null, "", null, null),
+                    new Channel("ch3", "Channel 3", null, null, "", null, null)
                 };
             }
             _channels = channels;
@@ -367,9 +414,44 @@ namespace WaxIPTV.Views
         /// </summary>
         private async System.Threading.Tasks.Task LoadEpgAsync(string? source, int refreshHours, bool force = false)
         {
+            // If the EPG source has changed since the last load, always force a reload.  We
+            // compare the normalized key of the incoming source against the last used
+            // key.  If they differ (including the initial load where _lastEpgKey may be
+            // null), update the stored key and set force=true so that the EPG is
+            // re-downloaded and re-mapped regardless of the refresh window.
+            var currentEpgKey = KeyFor(source);
+            if (_lastEpgKey != null && currentEpgKey != _lastEpgKey)
+            {
+                _lastEpgKey = currentEpgKey;
+                force = true;
+            }
+            else if (_lastEpgKey == null)
+            {
+                _lastEpgKey = currentEpgKey;
+            }
+
             // If not forcing and the last load was within the refresh interval, skip reloading
             if (!force && _epgLoadedAt + TimeSpan.FromHours(refreshHours) > DateTimeOffset.UtcNow)
                 return;
+
+            // Show the main window EPG loading indicator at the beginning of a new load.  Use
+            // Dispatcher to ensure UI updates occur on the correct thread.
+            try
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    if (MainEpgLoadingPanel != null)
+                    {
+                        MainEpgLoadingPanel.Visibility = Visibility.Visible;
+                        MainEpgLoadingLabel.Text = "Loading EPG...";
+                        MainEpgProgressBar.IsIndeterminate = true;
+                    }
+                });
+            }
+            catch
+            {
+                // Ignore UI update errors; loading will continue without a progress indicator.
+            }
 
             var programmesDict = new Dictionary<string, List<Programme>>();
             var cachePath = GetEpgCachePath();
@@ -392,26 +474,38 @@ namespace WaxIPTV.Views
                 }
             }
 
-            // 2) Otherwise attempt to download or read from the configured source
+            // 2) Otherwise attempt to download or read from the configured source.
+            //    Use XmltvTextLoader to handle both remote URLs and local files.
             if (xml == null && !string.IsNullOrWhiteSpace(source))
             {
                 try
                 {
-                    byte[] bytes = Array.Empty<byte>();
+                    string fetched = string.Empty;
+
+                    // Only attempt to load if the source is a valid URL or existing file.
                     if (Uri.TryCreate(source, UriKind.Absolute, out var uri) &&
                         (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
                     {
-                        using var client = new System.Net.Http.HttpClient();
-                        bytes = await client.GetByteArrayAsync(uri);
+                        // Use a cancellation token to impose a timeout on EPG downloads
+                        try
+                        {
+                            using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(15));
+                            fetched = await XmltvTextLoader.LoadAsync(source, cts.Token);
+                        }
+                        catch (System.OperationCanceledException)
+                        {
+                            // Timeout reached; leave fetched empty to trigger fallback
+                            fetched = string.Empty;
+                        }
                     }
                     else if (File.Exists(source))
                     {
-                        bytes = await File.ReadAllBytesAsync(source);
+                        // Local files are read synchronously without a timeout
+                        fetched = await XmltvTextLoader.LoadAsync(source);
                     }
 
-                    if (bytes.Length > 0)
+                    if (!string.IsNullOrEmpty(fetched))
                     {
-                        var fetched = ConvertEpgBytesToString(bytes, source);
                         xml = fetched;
                         // write/update the cache
                         try
@@ -449,7 +543,38 @@ namespace WaxIPTV.Views
                 try
                 {
                     var channelNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                    var programmesEnum = Xmltv.StreamProgrammes(xml, channelNames);
+                    // Parse all programmes from the XMLTV into a list so that we can compute
+                    // statistics (total count) and apply the time shift uniformly.  The
+                    // StreamProgrammes method returns an enumerable; converting to a list
+                    // enumerates once.  Channel names are populated in the dictionary.
+                    var programmesList = Xmltv.StreamProgrammes(xml, channelNames).ToList();
+
+                    // Apply a global EPG time shift if configured in settings.  Some providers
+                    // publish their XMLTV guide in a different timezone; shifting here
+                    // ensures times display correctly relative to the user.  A positive
+                    // value shifts programmes forward (later), a negative value shifts
+                    // them earlier.  Zero means no adjustment.
+                    try
+                    {
+                        var shiftMinutes = _settingsService.Settings.EpgShiftMinutes;
+                        if (shiftMinutes != 0)
+                        {
+                            for (int i = 0; i < programmesList.Count; i++)
+                            {
+                                var p = programmesList[i];
+                                programmesList[i] = p with
+                                {
+                                    StartUtc = p.StartUtc.AddMinutes(shiftMinutes),
+                                    EndUtc = p.EndUtc.AddMinutes(shiftMinutes)
+                                };
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // Ignore errors reading the settings and proceed without shifting.
+                    }
+
                     // Pass any manual EPG ID aliases from settings to the mapper.  These aliases
                     // allow users to map playlist channel names to specific XMLTV IDs when
                     // automatic or fuzzy matching fails.  The aliases dictionary is copied to
@@ -468,7 +593,10 @@ namespace WaxIPTV.Views
                         // ignore alias loading errors and fall back to null
                         overrides = null;
                     }
-                    programmesDict = EpgMapper.MapProgrammesInBatches(programmesEnum, _channels, channelNames, 200, overrides);
+
+                    // Map the programmes to channels using the batched mapper.  Provide the
+                    // list of programmes instead of the enumerable to avoid re-enumerating.
+                    programmesDict = EpgMapper.MapProgrammesInBatches(programmesList, _channels, channelNames, 200, overrides);
                     // Trim programmes beyond 7 days to limit memory usage
                     var cutoff = DateTimeOffset.UtcNow.AddDays(7);
                     foreach (var kv in programmesDict)
@@ -476,6 +604,121 @@ namespace WaxIPTV.Views
                         kv.Value.RemoveAll(p => p.EndUtc > cutoff);
                     }
                     _epgLoadedAt = DateTimeOffset.UtcNow;
+
+                    // -------------------------------------------------------------------
+                    // After mapping, record diagnostics and update counters.  The counters
+                    // show how many channels and programmes were parsed and mapped.  The
+                    // diagnostics file lists any playlist channels that were not mapped,
+                    // along with suggestions for epgIdAliases to help the user fix
+                    // mismatches between playlist names/ids and the XMLTV guide.
+                    try
+                    {
+                        // Compute counts
+                        int epgChannelNames = channelNames.Count;
+                        int totalProgrammesCount = programmesList.Count;
+                        int mappedChannelsCount = programmesDict.Count;
+                        int mappedProgrammesCount = 0;
+                        foreach (var list in programmesDict.Values)
+                        {
+                            mappedProgrammesCount += list.Count;
+                        }
+
+                        // Update the in-app counters on the UI thread
+                        Dispatcher.Invoke(() =>
+                        {
+                            if (EpgCountersText != null)
+                            {
+                                EpgCountersText.Text = $"EPG: channels in XMLTV={epgChannelNames}, programmes={totalProgrammesCount}, mapped channels={mappedChannelsCount}, mapped programmes={mappedProgrammesCount}";
+                            }
+                        });
+
+                        // Build diagnostics file listing unmatched channels and alias suggestions
+                        var allPlaylist = _channels ?? new List<Channel>();
+                        var mappedSet = new HashSet<string>(programmesDict.Keys);
+                        var missing = allPlaylist.Where(ch => !mappedSet.Contains(ch.Id)).ToList();
+
+                        // Write diagnostics file
+                        var diagPath = System.IO.Path.Combine(
+                            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                            "WaxIPTV", "epg-diagnostics.txt");
+                        System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(diagPath)!);
+                        using (var sw = new System.IO.StreamWriter(diagPath, false, System.Text.Encoding.UTF8))
+                        {
+                            sw.WriteLine($"[EPG Diagnostics] {DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss}");
+                            sw.WriteLine($"Playlist channels: {allPlaylist.Count}");
+                            sw.WriteLine($"Mapped channels:   {mappedSet.Count}");
+                            sw.WriteLine($"Unmatched (playlist but no EPG): {missing.Count}");
+                            sw.WriteLine();
+                            // Build lookup from display-name to XMLTV id
+                            var epgNameToId = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                            foreach (var kv in channelNames)
+                            {
+                                // kv.Key = xmltv channel id, kv.Value = display name
+                                epgNameToId[kv.Value] = kv.Key;
+                            }
+                            string Normalize(string s)
+                            {
+                                if (string.IsNullOrWhiteSpace(s)) return string.Empty;
+                                var sb = new System.Text.StringBuilder();
+                                foreach (var ch in s.ToLowerInvariant())
+                                    if (char.IsLetterOrDigit(ch)) sb.Append(ch);
+                                var norm = sb.ToString();
+                                string[] suffixes = { "uhd", "fhd", "hd", "sd", "4k" };
+                                bool stripped;
+                                do
+                                {
+                                    stripped = false;
+                                    foreach (var sfx in suffixes)
+                                    {
+                                        if (norm.EndsWith(sfx, StringComparison.Ordinal))
+                                        {
+                                            norm = norm.Substring(0, norm.Length - sfx.Length);
+                                            stripped = true;
+                                            break;
+                                        }
+                                    }
+                                } while (stripped);
+                                return norm;
+                            }
+                            // Write suggestions
+                            foreach (var ch in missing)
+                            {
+                                var norm = Normalize(ch.TvgName ?? ch.Name);
+                                if (!string.IsNullOrEmpty(ch.TvgId))
+                                {
+                                    sw.WriteLine($"- {ch.Name}  (has tvg-id=\"{ch.TvgId}\") → XMLTV id must equal that value");
+                                }
+                                else if (epgNameToId.TryGetValue(ch.TvgName ?? ch.Name, out var xmltvId))
+                                {
+                                    sw.WriteLine($"- {ch.Name}  suggestion: epgIdAliases[\"{norm}\"] = \"{xmltvId}\"");
+                                }
+                                else
+                                {
+                                    // Fuzzy match: first display-name normalizing to same string
+                                    var fuzzy = epgNameToId.FirstOrDefault(p => Normalize(p.Key) == norm);
+                                    if (!string.IsNullOrWhiteSpace(fuzzy.Key))
+                                    {
+                                        sw.WriteLine($"- {ch.Name}  suggestion: epgIdAliases[\"{norm}\"] = \"{fuzzy.Value}\"  // matches display-name \"{fuzzy.Key}\"");
+                                    }
+                                    else
+                                    {
+                                        sw.WriteLine($"- {ch.Name}  (no obvious XMLTV match) — check playlist tvg-id/tvg-name vs XMLTV <display-name>");
+                                    }
+                                }
+                            }
+                            sw.WriteLine();
+                            sw.WriteLine("Edit settings.json: add epgIdAliases entries like:");
+                            sw.WriteLine("{");
+                            sw.WriteLine("  \"epgIdAliases\": {");
+                            sw.WriteLine("    \"normalizedplaylistname\": \"xmltv-channel-id\"");
+                            sw.WriteLine("  }");
+                            sw.WriteLine("}");
+                        }
+                    }
+                    catch
+                    {
+                        // ignore diagnostics errors
+                    }
                 }
                 catch
                 {
@@ -484,6 +727,26 @@ namespace WaxIPTV.Views
             }
 
             _programmes = programmesDict;
+
+            // Hide the main window EPG loading indicator when loading completes.  Also update
+            // the status text to indicate completion.  Use Dispatcher to marshal back to
+            // the UI thread.
+            try
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    if (MainEpgLoadingPanel != null)
+                    {
+                        MainEpgProgressBar.IsIndeterminate = false;
+                        MainEpgLoadingLabel.Text = "EPG loaded";
+                        MainEpgLoadingPanel.Visibility = Visibility.Collapsed;
+                    }
+                });
+            }
+            catch
+            {
+                // ignore UI update errors
+            }
         }
 
         /// <summary>
@@ -532,6 +795,54 @@ namespace WaxIPTV.Views
         }
 
         /// <summary>
+        /// Cleans up timers, cancels background tasks and disposes the player when
+        /// the window is closed.  This prevents orphaned background threads or
+        /// external player processes from lingering after the UI is closed.
+        /// </summary>
+        protected override async void OnClosed(EventArgs e)
+        {
+            // Stop the periodic Now/Next timer
+            try
+            {
+                _nowNextTimer?.Stop();
+            }
+            catch
+            {
+                // ignore any timer errors
+            }
+            // Cancel the EPG refresh loop
+            try
+            {
+                _epgRefreshCts?.Cancel();
+            }
+            catch
+            {
+                // ignore cancellation errors
+            }
+            // Shut down and dispose the external player
+            if (_player != null)
+            {
+                try
+                {
+                    await _player.QuitAsync();
+                }
+                catch
+                {
+                    // ignore errors shutting down the player
+                }
+                try
+                {
+                    await _player.DisposeAsync();
+                }
+                catch
+                {
+                    // ignore disposal errors
+                }
+            }
+            base.OnClosed(e);
+        }
+
+        /// <summary>
         /// Starts playback of the selected channel.  Uses the active
         /// player controller to either start a new process or load
         /// the new URL into an existing mpv instance.  On error, a
@@ -540,13 +851,42 @@ namespace WaxIPTV.Views
         /// </summary>
         private async System.Threading.Tasks.Task PlayChannelAsync(Channel ch)
         {
+            // Lazy‑create a player controller on demand.  This allows users to
+            // fix a missing or invalid player path in Settings and immediately
+            // start playback without restarting the application.  If no player
+            // can be created, disable playback buttons and show a message.
             if (_player == null)
-                return;
+            {
+                var s = _settingsService.Settings;
+                // Try VLC first if selected
+                if (string.Equals(s.Player, "vlc", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(s.VlcPath))
+                {
+                    _player = new VlcController(s.VlcPath);
+                }
+                else if (!string.IsNullOrWhiteSpace(s.MpvPath))
+                {
+                    _player = new MpvController(s.MpvPath);
+                }
+                // Update button state based on whether a player was created
+                bool hasPlayer = _player != null;
+                PlayButton.IsEnabled = PauseButton.IsEnabled = StopButton.IsEnabled = hasPlayer;
+                if (!hasPlayer)
+                {
+                    MessageBox.Show("No player configured. Open Settings and set mpv.exe or vlc.exe.",
+                                    "Playback",
+                                    MessageBoxButton.OK,
+                                    MessageBoxImage.Warning);
+                    return;
+                }
+            }
+
+            // Ensure we have a valid stream URL
             if (string.IsNullOrWhiteSpace(ch.StreamUrl))
                 return;
+
             try
             {
-                // Use LoadAsync for mpv if it's already running
+                // Use LoadAsync for mpv if it's already running and we previously started it
                 if (_player is MpvController mpv && mpv.IsRunning && _playerStarted)
                 {
                     await mpv.LoadAsync(ch.StreamUrl);
@@ -800,6 +1140,31 @@ namespace WaxIPTV.Views
         private async void RefreshMenu_Click(object sender, RoutedEventArgs e)
         {
             await RefreshFromSettingsAsync();
+        }
+
+        /// <summary>
+        /// Handler for the "Reload EPG (force)" menu item.  Forces the EPG to be
+        /// reloaded from the current settings without reloading the playlist.
+        /// This bypasses the refresh interval and cache time‑to‑live, and it
+        /// resets the EPG loaded time so subsequent automatic refreshes occur on
+        /// the configured interval.  The channel list remains unchanged.
+        /// </summary>
+        private async void ReloadEpgForce_Click(object sender, RoutedEventArgs e)
+        {
+            // Ensure we have the latest settings from disk in case the user
+            // recently changed the EPG URL or refresh interval.  We do not
+            // reload the playlist here because the user may want to keep the
+            // current list intact.  Forcing a reload ensures that any
+            // modifications to the XMLTV source take effect immediately.
+            _settingsService.Load();
+            var s = _settingsService.Settings;
+
+            // Force load the EPG ignoring TTL and refresh interval.  By
+            // specifying force=true we also bypass the cache and always
+            // download/decompress the latest guide.  After loading, update
+            // Now/Next for the currently selected channel.
+            await LoadEpgAsync(s.XmltvUrl, s.EpgRefreshHours, force: true);
+            UpdateNowNextForSelected();
         }
     }
 }

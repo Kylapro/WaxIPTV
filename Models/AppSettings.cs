@@ -59,5 +59,15 @@ namespace WaxIPTV.Models
         /// </summary>
         [JsonPropertyName("epgIdAliases")]
         public Dictionary<string, string>? EpgIdAliases { get; set; }
+
+        /// <summary>
+        /// Optional global EPG time shift in minutes.  Some providers supply
+        /// XMLTV data in a different timezone than the viewer.  Specify a
+        /// positive or negative number of minutes here to adjust all
+        /// programme start and end times accordingly.  Defaults to zero,
+        /// meaning no shift is applied.
+        /// </summary>
+        [JsonPropertyName("epgShiftMinutes")]
+        public int EpgShiftMinutes { get; set; } = 0;
     }
 }

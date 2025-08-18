@@ -25,10 +25,33 @@
                 <MenuItem Header="Settings..." Click="SettingsMenu_Click" InputGestureText="Ctrl+,"/>
                 <MenuItem Header="EPG Guide" Click="GuideMenu_Click"/>
                 <MenuItem Header="Refresh (Playlist + EPG)" Click="RefreshMenu_Click"/>
+                <!-- Reloads only the EPG for the current playlist ignoring the refresh interval.  
+                     Useful for forcing a re-download and remap without reloading the playlist. -->
+                <MenuItem Header="Reload EPG (force)" Click="ReloadEpgForce_Click"/>
                 <Separator/>
                 <MenuItem Header="Exit" Click="ExitMenu_Click"/>
             </MenuItem>
         </Menu>
+
+        <!-- EPG loading indicator.  This panel shows a brief message and
+             an indeterminate progress bar while the EPG data is being
+             downloaded or parsed.  It is hidden by default and toggled
+             in the code-behind during EPG loads. -->
+        <StackPanel x:Name="MainEpgLoadingPanel"
+                    DockPanel.Dock="Top"
+                    Orientation="Horizontal"
+                    Visibility="Collapsed"
+                    Margin="8,0">
+            <TextBlock x:Name="MainEpgLoadingLabel"
+                       Text="Loading EPG..."
+                       VerticalAlignment="Center"
+                       Margin="0,0,8,0"/>
+            <ProgressBar x:Name="MainEpgProgressBar"
+                         Width="200"
+                         Height="4"
+                         VerticalAlignment="Center"
+                         IsIndeterminate="True"/>
+        </StackPanel>
 
         <!-- Main content: two columns -->
         <Grid Margin="8">
@@ -66,6 +89,15 @@
                                 Click="ClearSearch_Click"
                                 Style="{DynamicResource AccentButton}"/>
                     </StackPanel>
+                <!-- EPG counters: displays how many channels and programmes were loaded and mapped.  
+                     Placed on the right side of the filter bar.  Hidden until EPG is loaded. -->
+                <TextBlock x:Name="EpgCountersText"
+                           DockPanel.Dock="Right"
+                           Margin="8,0,0,0"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource TextBrush}"
+                           Text="EPG: (waiting…)"
+                           ToolTip="Shows counts after EPG loads"/>
                     <!-- Search box fills the remaining space -->
                     <TextBox x:Name="SearchBox"
                              Margin="0,0,8,0"

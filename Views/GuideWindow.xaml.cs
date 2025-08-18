@@ -448,27 +448,65 @@ namespace WaxIPTV.Views
             _buildRowsCts?.Cancel();
             _buildRowsCts = new System.Threading.CancellationTokenSource();
             var token = _buildRowsCts.Token;
+
+            // Determine which channels match the current filters.  We precompute
+            // this list so that we can report accurate progress while
+            // constructing guide rows.  Filtering ahead of time avoids
+            // unnecessary work for channels outside the selected group or
+            // search term.
+            var matchingChannels = _allChannels.Where(ChannelMatchesFilter).ToList();
+            int totalChannels = matchingChannels.Count;
+
+            // Initialize the progress indicator on the UI thread.  If there are
+            // no channels to display, hide the panel immediately.  Otherwise,
+            // reset the progress bar and show the loading panel.
+            Dispatcher.Invoke(() =>
+            {
+                if (totalChannels > 0)
+                {
+                    GuideEpgLoadingPanel.Visibility = Visibility.Visible;
+                    GuideProgressBar.Minimum = 0;
+                    GuideProgressBar.Maximum = totalChannels;
+                    GuideProgressBar.Value = 0;
+                    GuideLoadingLabel.Text = $"Loading EPG... (0/{totalChannels})";
+                }
+                else
+                {
+                    GuideEpgLoadingPanel.Visibility = Visibility.Collapsed;
+                    GuideLoadingLabel.Text = string.Empty;
+                }
+            });
+
             // Clear existing rows and draw header on UI thread
-            _allGuideRows.Clear();
-            _filteredRows.Clear();
-            DrawTimelineHeader();
-            // Kick off background task
+            Dispatcher.Invoke(() =>
+            {
+                _allGuideRows.Clear();
+                _filteredRows.Clear();
+                DrawTimelineHeader();
+            });
+
+            // Kick off background task to build guide rows.  As each row is
+            // constructed, update the progress bar and status message on the
+            // UI thread.  Use the cancellation token to abort if a new
+            // build is requested (e.g., when the user changes the filter).
             _ = Task.Run(async () =>
             {
                 int processed = 0;
-                foreach (var ch in _allChannels)
+                foreach (var ch in matchingChannels)
                 {
                     if (token.IsCancellationRequested)
                         break;
-                    if (!ChannelMatchesFilter(ch))
-                        continue;
                     var row = BuildGuideRow(ch);
                     await Dispatcher.InvokeAsync(() =>
                     {
                         _allGuideRows.Add(row);
                         _filteredRows.Add(row);
+                        processed++;
+                        // Update progress bar and label
+                        GuideProgressBar.Value = processed;
+                        GuideLoadingLabel.Text = $"Loading EPG... ({processed}/{totalChannels})";
                     });
-                    processed++;
+                    // Periodically yield to keep the UI responsive
                     if (processed % 20 == 0)
                     {
                         try
@@ -481,6 +519,16 @@ namespace WaxIPTV.Views
                         }
                     }
                 }
+                // Hide the loading panel when done or cancelled.  Use
+                // Dispatcher to ensure updates run on the UI thread.
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    if (!token.IsCancellationRequested)
+                    {
+                        GuideLoadingLabel.Text = totalChannels > 0 ? "EPG loaded" : string.Empty;
+                    }
+                    GuideEpgLoadingPanel.Visibility = Visibility.Collapsed;
+                });
             });
         }
 

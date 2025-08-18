@@ -64,12 +64,44 @@ namespace WaxIPTV.Services
             // Group the channels by normalised name and choose the first channel that has a TVG ID
             // as the representative for that name; otherwise pick the first in the group.  This
             // prevents duplicate keys from throwing and avoids losing EPG mapping for all entries.
-            var channelsByNormName = channels
-                .GroupBy(c => NormalizeName(c.Name), StringComparer.OrdinalIgnoreCase)
-                .ToDictionary(
-                    g => g.Key,
-                    g => g.FirstOrDefault(x => !string.IsNullOrEmpty(x.TvgId)) ?? g.First(),
-                    StringComparer.OrdinalIgnoreCase);
+            // Build a lookup of channels keyed by normalised names. Some playlists include duplicate
+            // names such as "Channel", "Channel HD", "Channel 4K" which normalise to the same key.
+            // We collect a list of all candidates for each normalised name instead of picking one
+            // representative up front. This allows us to choose the best candidate later (preferring
+            // those with a TVG ID) and avoids duplicate-key exceptions.
+            // Build lookups of channels keyed by normalised display names and tvg-names.  Some
+            // playlists include duplicate names such as "Channel", "Channel HD", etc.  We
+            // collect a list of candidates for each normalised key instead of picking one
+            // representative up front.  This allows us to choose the best candidate later
+            // (preferring those with a TVG ID) and avoids duplicate-key exceptions.  We
+            // also build a separate lookup keyed by normalised tvg-name values (if present)
+            // so that EPG mapping can match on tvg-name, similar to behaviour in other
+            // players such as Televizo.
+            var channelsByNormName = new Dictionary<string, List<Channel>>(StringComparer.OrdinalIgnoreCase);
+            var channelsByNormTvgName = new Dictionary<string, List<Channel>>(StringComparer.OrdinalIgnoreCase);
+            foreach (var c in channels)
+            {
+                // Normalised display name lookup
+                var key = NormalizeName(c.Name);
+                if (!channelsByNormName.TryGetValue(key, out var list))
+                {
+                    list = new List<Channel>();
+                    channelsByNormName[key] = list;
+                }
+                list.Add(c);
+
+                // Normalised tvg-name lookup (if provided)
+                if (!string.IsNullOrWhiteSpace(c.TvgName))
+                {
+                    var tkey = NormalizeName(c.TvgName!);
+                    if (!channelsByNormTvgName.TryGetValue(tkey, out var tlist))
+                    {
+                        tlist = new List<Channel>();
+                        channelsByNormTvgName[tkey] = tlist;
+                    }
+                    tlist.Add(c);
+                }
+            }
             var channelIndex = channels
                 .Select((c, i) => new { c.Id, Index = i })
                 .ToDictionary(x => x.Id, x => x.Index, StringComparer.OrdinalIgnoreCase);
@@ -97,19 +129,51 @@ namespace WaxIPTV.Services
                         {
                             match = overrideChannel;
                         }
-                        if (match == null && channelsByNormName.TryGetValue(norm, out var byName))
+                        // 3) tvg-name match (normalize xml display name to match tvg-name values)
+                        if (match == null && channelsByNormTvgName.TryGetValue(norm, out var tvgCandidates))
                         {
-                            match = byName;
+                            // Choose the best candidate: prefer those with a TVG ID, then shortest display name
+                            var chosenTvg = tvgCandidates
+                                .OrderByDescending(c => !string.IsNullOrEmpty(c.TvgId))
+                                .ThenBy(c => c.Name.Length)
+                                .FirstOrDefault();
+                            match = chosenTvg;
                             // Update the channel's TVG ID if it differs from the programme's channel ID to improve future lookups
-                            if (!string.IsNullOrEmpty(prog.ChannelId) && (!string.Equals(byName.TvgId, prog.ChannelId, StringComparison.OrdinalIgnoreCase)))
+                            if (match != null && !string.IsNullOrEmpty(prog.ChannelId) && !string.Equals(match.TvgId, prog.ChannelId, StringComparison.OrdinalIgnoreCase))
                             {
-                                var updated = byName with { TvgId = prog.ChannelId };
-                                channels[channelIndex[byName.Id]] = updated;
-                                channelsByNormName[norm] = updated;
+                                var updated = match with { TvgId = prog.ChannelId };
+                                channels[channelIndex[match.Id]] = updated;
+                                // update the candidate list
+                                var idxCandidate = tvgCandidates.IndexOf(match);
+                                if (idxCandidate >= 0) tvgCandidates[idxCandidate] = updated;
                                 channelsByTvgId[prog.ChannelId] = updated;
+                                match = updated;
                             }
                         }
-                        // If still no match, attempt a fuzzy match based on Levenshtein similarity
+
+                        // 4) fallback: normalised display name match on channel name
+                        if (match == null && channelsByNormName.TryGetValue(norm, out var candidates))
+                        {
+                            // Choose the best candidate: prefer those with a TVG ID, then shortest name
+                            var chosen = candidates
+                                .OrderByDescending(c => !string.IsNullOrEmpty(c.TvgId))
+                                .ThenBy(c => c.Name.Length)
+                                .FirstOrDefault();
+                            match = chosen;
+                            // Update the channel's TVG ID if it differs from the programme's channel ID to improve future lookups
+                            if (match != null && !string.IsNullOrEmpty(prog.ChannelId) && !string.Equals(match.TvgId, prog.ChannelId, StringComparison.OrdinalIgnoreCase))
+                            {
+                                var updated = match with { TvgId = prog.ChannelId };
+                                channels[channelIndex[match.Id]] = updated;
+                                // update the candidate list
+                                var idxCandidate = candidates.IndexOf(match);
+                                if (idxCandidate >= 0) candidates[idxCandidate] = updated;
+                                channelsByTvgId[prog.ChannelId] = updated;
+                                match = updated;
+                            }
+                        }
+
+                        // 5) If still no match, attempt a fuzzy match based on Levenshtein similarity
                         if (match == null)
                         {
                             var fuzzy = FindBestChannel(displayName, channelsByNormName);
@@ -118,12 +182,24 @@ namespace WaxIPTV.Services
                                 match = fuzzy;
                                 // As above, update the TVG ID to the XMLTV channel id for consistency
                                 var normF = NormalizeName(displayName);
-                                if (!string.IsNullOrEmpty(prog.ChannelId) && (!string.Equals(fuzzy.TvgId, prog.ChannelId, StringComparison.OrdinalIgnoreCase)))
+                                if (!string.IsNullOrEmpty(prog.ChannelId) && !string.Equals(fuzzy.TvgId, prog.ChannelId, StringComparison.OrdinalIgnoreCase))
                                 {
                                     var updated = fuzzy with { TvgId = prog.ChannelId };
                                     channels[channelIndex[fuzzy.Id]] = updated;
-                                    channelsByNormName[normF] = updated;
+                                    // update in channelsByNormName list for this normalised key
+                                    if (channelsByNormName.TryGetValue(normF, out var listF))
+                                    {
+                                        var idxF = listF.IndexOf(fuzzy);
+                                        if (idxF >= 0) listF[idxF] = updated;
+                                    }
+                                    // update in tvg-name dictionary if tvg-name present
+                                    if (channelsByNormTvgName.TryGetValue(normF, out var listT))
+                                    {
+                                        var idxT = listT.IndexOf(fuzzy);
+                                        if (idxT >= 0) listT[idxT] = updated;
+                                    }
                                     channelsByTvgId[prog.ChannelId] = updated;
+                                    match = updated;
                                 }
                             }
                         }
@@ -168,16 +244,22 @@ namespace WaxIPTV.Services
                     sb.Append(ch);
             }
             var norm = sb.ToString();
-            // Remove one common suffix if present.  This helps match variations like "channelhd", "networkusa", etc.
-            var suffixes = new[] { "uhd", "hd", "fhd", "4k", "sd", "tv", "channel", "network", "us", "usa", "uk", "ca", "de" };
-            foreach (var suffix in suffixes)
+            // Remove stacked suffixes such as "...uhdhd4k" repeatedly until no more suffix is present.
+            var suffixes = new[] { "uhd", "fhd", "hd", "sd", "4k", "tv", "channel", "network", "us", "usa", "uk", "ca", "de" };
+            bool stripped;
+            do
             {
-                if (norm.EndsWith(suffix, StringComparison.Ordinal))
+                stripped = false;
+                foreach (var suffix in suffixes)
                 {
-                    norm = norm.Substring(0, norm.Length - suffix.Length);
-                    break;
+                    if (norm.EndsWith(suffix, StringComparison.Ordinal))
+                    {
+                        norm = norm.Substring(0, norm.Length - suffix.Length);
+                        stripped = true;
+                        break;
+                    }
                 }
-            }
+            } while (stripped);
             return norm;
         }
 
@@ -240,7 +322,7 @@ namespace WaxIPTV.Services
         /// <param name="displayName">The XMLTV channel display name.</param>
         /// <param name="channelsByNormName">Lookup of normalised playlist channel names to channels.</param>
         /// <returns>A channel if a sufficiently similar match exists; otherwise null.</returns>
-        private static Channel? FindBestChannel(string displayName, Dictionary<string, Channel> channelsByNormName)
+        private static Channel? FindBestChannel(string displayName, Dictionary<string, List<Channel>> channelsByNormName)
         {
             if (string.IsNullOrWhiteSpace(displayName) || channelsByNormName.Count == 0)
                 return null;
@@ -253,7 +335,13 @@ namespace WaxIPTV.Services
                 if (score > bestScore)
                 {
                     bestScore = score;
-                    best = kv.Value;
+                    // Pick the best candidate from the list: prefer those with a TVG ID and shorter names
+                    var candidates = kv.Value;
+                    var chosen = candidates
+                        .OrderByDescending(c => !string.IsNullOrEmpty(c.TvgId))
+                        .ThenBy(c => c.Name.Length)
+                        .FirstOrDefault();
+                    best = chosen;
                 }
             }
             // Require a reasonable threshold to avoid incorrect matches
