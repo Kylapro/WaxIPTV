@@ -6,25 +6,24 @@
              mc:Ignorable="d"
              Height="Auto" Width="Auto">
     <!--
-        A simple view to display the currently airing programme (Now) and
-        the upcoming programme (Next) for a selected channel. This
-        UserControl relies on two dependency properties, `NowProgramme`
-        and `NextProgramme`, which can be bound from a viewmodel or
-        manually set in code-behind. Each programme is displayed with
-        its title and time range converted to local time.
+        Displays the full programme schedule for a channel.  Programmes are
+        listed in order with their local start/end times and descriptions.
+        The list is wrapped in a surface-coloured card using the design
+        tokens for consistent rounding and spacing.
     -->
-    <!-- Present now/next information inside a surface coloured card.  The
-         border uses the ThemeCornerRadius token to ensure rounding
-         matches the rest of the UI, and spacing tokens provide
-         consistent padding. -->
     <Border Background="{DynamicResource SurfaceBrush}"
             CornerRadius="{DynamicResource ThemeCornerRadius}"
             Padding="{DynamicResource SpacingM}">
-        <StackPanel>
-            <TextBlock Text="Now:" FontWeight="Bold" Foreground="{DynamicResource MutedTextBrush}"/>
-            <TextBlock x:Name="NowText" Text="No programme" Margin="0,0,0,8"/>
-            <TextBlock Text="Next:" FontWeight="Bold" Foreground="{DynamicResource MutedTextBrush}"/>
-            <TextBlock x:Name="NextText" Text="No programme"/>
-        </StackPanel>
+        <ListBox x:Name="ProgrammeList" BorderThickness="0">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <StackPanel Margin="0,0,0,8">
+                        <TextBlock Text="{Binding Title}" FontWeight="Bold"/>
+                        <TextBlock Text="{Binding TimeRange}" Foreground="{DynamicResource MutedTextBrush}"/>
+                        <TextBlock Text="{Binding Description}" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
     </Border>
 </UserControl>
