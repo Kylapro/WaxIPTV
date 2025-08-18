@@ -204,7 +204,7 @@ namespace WaxIPTV.Views
             else
             {
                 SelectedChannelTitle.Text = string.Empty;
-                NowNext.UpdateProgrammes(null, null);
+                NowNext.UpdateProgrammes(null);
             }
 
             // Start or restart the Now/Next timer
@@ -353,7 +353,7 @@ namespace WaxIPTV.Views
             else
             {
                 SelectedChannelTitle.Text = string.Empty;
-                NowNext.UpdateProgrammes(null, null);
+                NowNext.UpdateProgrammes(null);
             }
         }
 
@@ -799,20 +799,19 @@ namespace WaxIPTV.Views
             {
                 AppLog.Logger.Information("Channel selection cleared");
                 SelectedChannelTitle.Text = string.Empty;
-                NowNext.UpdateProgrammes(null, null);
+                NowNext.UpdateProgrammes(null);
                 return;
             }
             AppLog.Logger.Information("Channel selected {Name}", selected.Name);
             SelectedChannelTitle.Text = selected.Name;
             if (_programmes.TryGetValue(selected.Id, out var progs))
             {
-                var (now, next) = EpgHelpers.GetNowNext(progs, DateTimeOffset.UtcNow);
-                NowNext.UpdateProgrammes(now, next);
-                AppLog.Logger.Information("Now playing {Now} next {Next}", now?.Title, next?.Title);
+                NowNext.UpdateProgrammes(progs);
+                AppLog.Logger.Information("Loaded {Count} programmes for {Channel}", progs.Count, selected.Name);
             }
             else
             {
-                NowNext.UpdateProgrammes(null, null);
+                NowNext.UpdateProgrammes(null);
             }
         }
 
@@ -826,13 +825,12 @@ namespace WaxIPTV.Views
                 return;
             if (_programmes.TryGetValue(selected.Id, out var progs))
             {
-                var (now, next) = EpgHelpers.GetNowNext(progs, DateTimeOffset.UtcNow);
-                NowNext.UpdateProgrammes(now, next);
-                AppLog.Logger.Information("Updated Now/Next for {Channel}: {Now} -> {Next}", selected.Name, now?.Title, next?.Title);
+                NowNext.UpdateProgrammes(progs);
+                AppLog.Logger.Information("Updated EPG list for {Channel} with {Count} programmes", selected.Name, progs.Count);
             }
             else
             {
-                NowNext.UpdateProgrammes(null, null);
+                NowNext.UpdateProgrammes(null);
                 AppLog.Logger.Information("No EPG data for {Channel}", selected.Name);
             }
         }

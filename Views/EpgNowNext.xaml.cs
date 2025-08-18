@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using WaxIPTV.Models;
@@ -17,36 +19,34 @@ namespace WaxIPTV.Views
         }
 
         /// <summary>
-        /// Updates the display of the now and next programmes. The
-        /// programmes should have their times specified in UTC; this
-        /// method converts them to the local time zone using
-        /// DateTimeOffset.ToLocalTime().
+        /// Updates the list of programmes for the selected channel.  The
+        /// programmes should be provided in UTC and are converted to the
+        /// local time zone before display.
         /// </summary>
-        /// <param name="now">The programme currently airing.</param>
-        /// <param name="next">The programme airing after the current one.</param>
-        public void UpdateProgrammes(Programme? now, Programme? next)
+        /// <param name="programmes">All programmes for the channel in start time order.</param>
+        public void UpdateProgrammes(List<Programme>? programmes)
         {
-            if (now != null)
+            if (programmes == null || programmes.Count == 0)
             {
-                var localStart = now.StartUtc.ToLocalTime().DateTime;
-                var localEnd = now.EndUtc.ToLocalTime().DateTime;
-                NowText.Text = $"{now.Title} ({FormatRange(localStart, localEnd)})";
-            }
-            else
-            {
-                NowText.Text = "No programme";
+                ProgrammeList.ItemsSource = new List<ProgrammeDisplay>
+                {
+                    new("No programme", string.Empty, string.Empty)
+                };
+                return;
             }
 
-            if (next != null)
+            var items = programmes.Select(p =>
             {
-                var localStart = next.StartUtc.ToLocalTime().DateTime;
-                var localEnd = next.EndUtc.ToLocalTime().DateTime;
-                NextText.Text = $"{next.Title} ({FormatRange(localStart, localEnd)})";
-            }
-            else
-            {
-                NextText.Text = "No programme";
-            }
+                var localStart = p.StartUtc.ToLocalTime().DateTime;
+                var localEnd = p.EndUtc.ToLocalTime().DateTime;
+                return new ProgrammeDisplay(
+                    p.Title,
+                    FormatRange(localStart, localEnd),
+                    p.Desc ?? string.Empty
+                );
+            }).ToList();
+
+            ProgrammeList.ItemsSource = items;
         }
 
         /// <summary>
@@ -59,5 +59,7 @@ namespace WaxIPTV.Views
             string endStr = end.ToString("t", CultureInfo.CurrentCulture);
             return $"{startStr} - {endStr}";
         }
+
+        private record ProgrammeDisplay(string Title, string TimeRange, string Description);
     }
 }
