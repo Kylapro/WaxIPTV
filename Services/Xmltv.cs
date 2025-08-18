@@ -20,6 +20,8 @@ namespace WaxIPTV.Services
         /// Parses an XMLTV document and returns a dictionary of channel identifiers
         /// to display names along with a list of programme entries.  Parsing is
         /// performed using a streaming reader to minimise memory consumption.
+        /// Programmes that lack a channel identifier or valid start/stop times are
+        /// ignored so inaccurate EPG data is not returned.
         /// </summary>
         /// <param name="xml">Raw XMLTV content.</param>
         /// <returns>A tuple containing channel names and programmes.</returns>
@@ -94,8 +96,15 @@ namespace WaxIPTV.Services
                             desc = sub.ReadElementContentAsString();
                         }
                     }
-                    // Use empty strings for missing fields to avoid nulls; description remains nullable
-                    programmes.Add(new Programme(channelId, start, stop, title ?? string.Empty, desc));
+                    // Only include the programme if it has a channel and valid times
+                    if (!string.IsNullOrWhiteSpace(channelId) &&
+                        start != DateTimeOffset.MinValue &&
+                        stop != DateTimeOffset.MinValue &&
+                        stop > start)
+                    {
+                        // Use empty strings for missing fields to avoid nulls; description remains nullable
+                        programmes.Add(new Programme(channelId, start, stop, title ?? string.Empty, desc));
+                    }
                 }
             }
 
@@ -108,7 +117,8 @@ namespace WaxIPTV.Services
         /// Streams programmes from an XMLTV document while populating a dictionary
         /// of channel identifiers to display names.  This method yields programmes
         /// sequentially, allowing callers to process them in small groups and
-        /// thereby reduce memory pressure.
+        /// thereby reduce memory pressure.  Programmes missing a channel ID or a
+        /// valid time range are skipped.
         /// </summary>
         /// <param name="xml">Raw XMLTV content.</param>
         /// <param name="channelNames">Dictionary to receive channel id/display name pairs.</param>
@@ -173,7 +183,13 @@ namespace WaxIPTV.Services
                         else if (sub.Name.Equals("desc", StringComparison.OrdinalIgnoreCase))
                             desc = sub.ReadElementContentAsString();
                     }
-                    yield return new Programme(channelId, start, stop, title ?? string.Empty, desc);
+                    if (!string.IsNullOrWhiteSpace(channelId) &&
+                        start != DateTimeOffset.MinValue &&
+                        stop != DateTimeOffset.MinValue &&
+                        stop > start)
+                    {
+                        yield return new Programme(channelId, start, stop, title ?? string.Empty, desc);
+                    }
                 }
             }
         }
