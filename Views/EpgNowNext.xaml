@@ -22,9 +22,18 @@
             Padding="{DynamicResource SpacingM}">
         <StackPanel>
             <TextBlock Text="Now:" FontWeight="Bold" Foreground="{DynamicResource MutedTextBrush}"/>
-            <TextBlock x:Name="NowText" Text="No programme" Margin="0,0,0,8"/>
+            <TextBlock x:Name="NowText" Text="No programme"/>
+            <TextBlock x:Name="NowDescText"
+                       TextWrapping="Wrap"
+                       Margin="0,0,0,8"
+                       Foreground="{DynamicResource MutedTextBrush}"
+                       Visibility="Collapsed"/>
             <TextBlock Text="Next:" FontWeight="Bold" Foreground="{DynamicResource MutedTextBrush}"/>
             <TextBlock x:Name="NextText" Text="No programme"/>
+            <TextBlock x:Name="NextDescText"
+                       TextWrapping="Wrap"
+                       Foreground="{DynamicResource MutedTextBrush}"
+                       Visibility="Collapsed"/>
         </StackPanel>
     </Border>
 </UserControl>
