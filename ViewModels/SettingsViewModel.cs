@@ -382,10 +382,11 @@ namespace WaxIPTV.ViewModels
 
         /// <summary>
         /// Converts a byte array representing an EPG XML or gzipped XML into a
-        /// string.  If the source path ends with ".gz", the data is
-        /// decompressed using a GZipStream before decoding as UTF‑8.  Otherwise
-        /// the bytes are decoded directly.  This helper centralises the
-        /// decompression logic used by DownloadEpg.
+        /// string.  If the source is gzip-compressed the bytes are inflated
+        /// before decoding as UTF‑8.  Gzip detection is performed using both
+        /// the file extension and the gzip magic numbers so that feeds served
+        /// without a ".gz" suffix still load correctly.  If decompression
+        /// fails for any reason, the raw bytes are decoded directly.
         /// </summary>
         /// <param name="bytes">Raw bytes downloaded or read from disk.</param>
         /// <param name="source">The original URL or file path used to identify
@@ -395,22 +396,24 @@ namespace WaxIPTV.ViewModels
         {
             try
             {
-                if (!string.IsNullOrEmpty(source) && source.EndsWith(".gz", StringComparison.OrdinalIgnoreCase))
+                bool extIsGz = !string.IsNullOrEmpty(source) &&
+                               source.EndsWith(".gz", StringComparison.OrdinalIgnoreCase);
+                bool magicIsGz = bytes.Length >= 2 && bytes[0] == 0x1F && bytes[1] == 0x8B;
+
+                if (extIsGz || magicIsGz)
                 {
-                    using var input = new MemoryStream(bytes);
-                    using var gz = new GZipStream(input, CompressionMode.Decompress);
-                    using var output = new MemoryStream();
-                    gz.CopyTo(output);
-                    return Encoding.UTF8.GetString(output.ToArray());
+                    using var ms = new MemoryStream(bytes);
+                    using var gz = new GZipStream(ms, CompressionMode.Decompress);
+                    using var sr = new StreamReader(gz, Encoding.UTF8);
+                    return sr.ReadToEnd();
                 }
-                else
-                {
-                    return Encoding.UTF8.GetString(bytes);
-                }
+
+                // Not gzipped; decode directly. Encoding.GetString handles BOMs if present.
+                return Encoding.UTF8.GetString(bytes);
             }
             catch
             {
-                // Fallback to plain UTF‑8 if decompression fails
+                // Fallback to plain UTF‑8 if decompression or decoding fails
                 return Encoding.UTF8.GetString(bytes);
             }
         }
