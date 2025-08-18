@@ -564,38 +564,28 @@ namespace WaxIPTV.Views
                 {
                     AppLog.Logger.Information("Parsing EPG XML");
                     var channelNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                    // Parse all programmes from the XMLTV into a list so that we can compute
-                    // statistics (total count) and apply the time shift uniformly.  The
-                    // StreamProgrammes method returns an enumerable; converting to a list
-                    // enumerates once.  Channel names are populated in the dictionary.
-                    var programmesList = Xmltv.StreamProgrammes(xml, channelNames).ToList();
-
-                    // Apply a global EPG time shift if configured in settings.  Some providers
-                    // publish their XMLTV guide in a different timezone; shifting here
-                    // ensures times display correctly relative to the user.  A positive
-                    // value shifts programmes forward (later), a negative value shifts
-                    // them earlier.  Zero means no adjustment.
+                    int totalProgrammes = 0;
+                    int shiftMinutes = 0;
                     try
                     {
-                        var shiftMinutes = _settingsService.Settings.EpgShiftMinutes;
-                        if (shiftMinutes != 0)
-                        {
-                            for (int i = 0; i < programmesList.Count; i++)
-                            {
-                                var p = programmesList[i];
-                                programmesList[i] = p with
-                                {
-                                    StartUtc = p.StartUtc.AddMinutes(shiftMinutes),
-                                    EndUtc = p.EndUtc.AddMinutes(shiftMinutes)
-                                };
-                            }
-                        }
+                        shiftMinutes = _settingsService.Settings.EpgShiftMinutes;
                     }
                     catch (Exception ex)
                     {
                         AppLog.Logger.Warning(ex, "Failed applying EPG time shift");
-                        // Ignore errors reading the settings and proceed without shifting.
                     }
+
+                    var programmeStream = Xmltv.StreamProgrammes(xml, channelNames).Select(p =>
+                    {
+                        totalProgrammes++;
+                        return shiftMinutes != 0
+                            ? p with
+                            {
+                                StartUtc = p.StartUtc.AddMinutes(shiftMinutes),
+                                EndUtc = p.EndUtc.AddMinutes(shiftMinutes)
+                            }
+                            : p;
+                    });
 
                     // Pass any manual EPG ID aliases from settings to the mapper.  These aliases
                     // allow users to map playlist channel names to specific XMLTV IDs when
@@ -617,10 +607,10 @@ namespace WaxIPTV.Views
                         overrides = null;
                     }
 
-                    // Map the programmes to channels using the batched mapper.  Provide the
-                    // list of programmes instead of the enumerable to avoid re-enumerating.
-                    AppLog.Logger.Information("Mapping {ProgCount} programmes", programmesList.Count);
-                    programmesDict = EpgMapper.MapProgrammesInBatches(programmesList, _channels, channelNames, 200, overrides);
+                    // Map the programmes to channels using the batched mapper. The stream
+                    // enumerates lazily, keeping memory usage low when handling large EPGs.
+                    programmesDict = EpgMapper.MapProgrammesInBatches(programmeStream, _channels, channelNames, 200, overrides);
+                    AppLog.Logger.Information("Mapping {ProgCount} programmes", totalProgrammes);
                     // Trim programmes beyond 7 days to limit memory usage
                     var cutoff = DateTimeOffset.UtcNow.AddDays(7);
                     foreach (var kv in programmesDict)
@@ -639,7 +629,7 @@ namespace WaxIPTV.Views
                     {
                         // Compute counts
                         int epgChannelNames = channelNames.Count;
-                        int totalProgrammesCount = programmesList.Count;
+                        int totalProgrammesCount = totalProgrammes;
                         int mappedChannelsCount = programmesDict.Count;
                         int mappedProgrammesCount = 0;
                         foreach (var list in programmesDict.Values)
