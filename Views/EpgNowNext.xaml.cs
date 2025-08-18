@@ -31,10 +31,22 @@ namespace WaxIPTV.Views
                 var localStart = now.StartUtc.ToLocalTime().DateTime;
                 var localEnd = now.EndUtc.ToLocalTime().DateTime;
                 NowText.Text = $"{now.Title} ({FormatRange(localStart, localEnd)})";
+                if (!string.IsNullOrWhiteSpace(now.Desc))
+                {
+                    NowDescText.Text = now.Desc;
+                    NowDescText.Visibility = Visibility.Visible;
+                }
+                else
+                {
+                    NowDescText.Text = string.Empty;
+                    NowDescText.Visibility = Visibility.Collapsed;
+                }
             }
             else
             {
                 NowText.Text = "No programme";
+                NowDescText.Text = string.Empty;
+                NowDescText.Visibility = Visibility.Collapsed;
             }
 
             if (next != null)
@@ -42,10 +54,22 @@ namespace WaxIPTV.Views
                 var localStart = next.StartUtc.ToLocalTime().DateTime;
                 var localEnd = next.EndUtc.ToLocalTime().DateTime;
                 NextText.Text = $"{next.Title} ({FormatRange(localStart, localEnd)})";
+                if (!string.IsNullOrWhiteSpace(next.Desc))
+                {
+                    NextDescText.Text = next.Desc;
+                    NextDescText.Visibility = Visibility.Visible;
+                }
+                else
+                {
+                    NextDescText.Text = string.Empty;
+                    NextDescText.Visibility = Visibility.Collapsed;
+                }
             }
             else
             {
                 NextText.Text = "No programme";
+                NextDescText.Text = string.Empty;
+                NextDescText.Visibility = Visibility.Collapsed;
             }
         }
 
