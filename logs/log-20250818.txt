@@ -1,0 +1,208 @@
+2025-08-18 14:40:59.639 -06:00 [INF] Application starting
+2025-08-18 14:41:00.246 -06:00 [INF] Loading configuration and data
+2025-08-18 14:41:00.246 -06:00 [INF] Settings file not found, attempting to auto-detect players
+2025-08-18 14:41:00.331 -06:00 [INF] Detected mpv at [redacted]
+2025-08-18 14:41:00.332 -06:00 [INF] Detected VLC at [redacted]
+2025-08-18 14:41:00.335 -06:00 [INF] Loaded 3 channels
+2025-08-18 14:41:00.338 -06:00 [INF] Channel list populated with 3 items
+2025-08-18 14:41:00.340 -06:00 [INF] Channel list populated with 3 items
+2025-08-18 14:41:00.341 -06:00 [INF] Channel selected Channel 1
+2025-08-18 14:41:00.342 -06:00 [INF] Channel selection changed to Channel 1
+2025-08-18 14:41:00.343 -06:00 [INF] Channel list populated with 3 items
+2025-08-18 14:41:04.809 -06:00 [INF] Parsing EPG XML
+2025-08-18 14:41:05.316 -06:00 [INF] Mapping 47907 programmes
+2025-08-18 14:41:05.727 -06:00 [INF] Mapped programmes for 1 channels
+2025-08-18 14:41:05.735 -06:00 [INF] EPG load complete with 182 programmes
+2025-08-18 14:41:05.736 -06:00 [INF] EPG loaded with 182 programmes
+2025-08-18 14:41:07.471 -06:00 [INF] Channel selected Channel 2
+2025-08-18 14:41:07.471 -06:00 [INF] Channel selection changed to Channel 2
+2025-08-18 14:41:08.167 -06:00 [INF] Channel selected Channel 3
+2025-08-18 14:41:08.167 -06:00 [INF] Channel selection changed to Channel 3
+2025-08-18 14:41:08.564 -06:00 [INF] Channel selected Channel 1
+2025-08-18 14:41:08.565 -06:00 [INF] Now playing Today in Tech next The CEO Series
+2025-08-18 14:41:08.565 -06:00 [INF] Channel selection changed to Channel 1
+2025-08-18 14:41:35.730 -06:00 [INF] Updated Now/Next for Channel 1: Today in Tech -> The CEO Series
+2025-08-18 14:42:05.730 -06:00 [INF] Updated Now/Next for Channel 1: Today in Tech -> The CEO Series
+2025-08-18 14:42:24.853 -06:00 [INF] Saving settings to [redacted]
+2025-08-18 14:42:35.729 -06:00 [INF] Updated Now/Next for Channel 1: Today in Tech -> The CEO Series
+2025-08-18 14:43:05.731 -06:00 [INF] Updated Now/Next for Channel 1: Today in Tech -> The CEO Series
+2025-08-18 14:43:35.730 -06:00 [INF] Updated Now/Next for Channel 1: Today in Tech -> The CEO Series
+2025-08-18 14:44:05.729 -06:00 [INF] Updated Now/Next for Channel 1: Today in Tech -> The CEO Series
+2025-08-18 14:44:35.736 -06:00 [INF] Updated Now/Next for Channel 1: Today in Tech -> The CEO Series
+2025-08-18 14:45:05.732 -06:00 [INF] Updated Now/Next for Channel 1: Today in Tech -> The CEO Series
+2025-08-18 14:45:35.728 -06:00 [INF] Updated Now/Next for Channel 1: Today in Tech -> The CEO Series
+2025-08-18 14:46:05.728 -06:00 [INF] Updated Now/Next for Channel 1: Today in Tech -> The CEO Series
+2025-08-18 14:46:35.733 -06:00 [INF] Updated Now/Next for Channel 1: Today in Tech -> The CEO Series
+2025-08-18 14:46:52.502 -06:00 [ERR] Unhandled dispatcher exception
+System.InvalidOperationException: DialogResult can be set only after Window is created and shown as dialog.
+   at System.Windows.Window.set_DialogResult(Nullable`1 value)
+   at WaxIPTV.ViewModels.SettingsViewModel.SaveAndClose(Window window) in Z:\WaxIPTV\ViewModels\SettingsViewModel.cs:line 349
+   at CommunityToolkit.Mvvm.Input.AsyncRelayCommand.AwaitAndThrowIfFailed(Task executionTask)
+   at System.Threading.Tasks.Task.<>c.<ThrowAsync>b__128_0(Object state)
+   at System.Windows.Threading.ExceptionWrapper.InternalRealCall(Delegate callback, Object args, Int32 numArgs)
+   at System.Windows.Threading.ExceptionWrapper.TryCatchWhen(Object source, Delegate callback, Object args, Int32 numArgs, Delegate catchHandler)
+2025-08-18 14:47:05.734 -06:00 [INF] Updated Now/Next for Channel 1: Today in Tech -> The CEO Series
+2025-08-18 14:47:12.029 -06:00 [INF] Saving settings to [redacted]
+2025-08-18 14:47:35.729 -06:00 [INF] Updated Now/Next for Channel 1: Today in Tech -> The CEO Series
+2025-08-18 14:48:05.730 -06:00 [INF] Updated Now/Next for Channel 1: Today in Tech -> The CEO Series
+2025-08-18 14:48:35.730 -06:00 [INF] Updated Now/Next for Channel 1: Today in Tech -> The CEO Series
+2025-08-18 14:49:05.734 -06:00 [INF] Updated Now/Next for Channel 1: Today in Tech -> The CEO Series
+2025-08-18 14:49:16.153 -06:00 [INF] Refreshing data from settings
+2025-08-18 14:49:16.153 -06:00 [INF] Loading settings from [redacted]
+2025-08-18 14:49:16.755 -06:00 [INF] Parsing playlist from [redacted]
+2025-08-18 14:49:16.833 -06:00 [INF] Parsed 7643 channels from playlist
+2025-08-18 14:49:16.834 -06:00 [INF] Reloaded 7643 channels
+2025-08-18 14:49:16.840 -06:00 [INF] Channel selection cleared
+2025-08-18 14:49:16.840 -06:00 [INF] Channel list populated with 7643 items
+2025-08-18 14:49:16.842 -06:00 [INF] Channel list populated with 7643 items
+2025-08-18 14:49:16.842 -06:00 [INF] Channel selected CVM (Jamaica)
+2025-08-18 14:49:16.842 -06:00 [INF] Channel selection changed to CVM (Jamaica)
+2025-08-18 14:49:34.666 -06:00 [INF] Parsing EPG XML
+2025-08-18 14:49:37.234 -06:00 [INF] Mapping 551272 programmes
+2025-08-18 14:49:37.235 -06:00 [ERR] Failed to parse or map EPG
+System.ArgumentException: An item with the same key has already been added. Key: 24.7.Dummy.us
+   at System.Collections.Generic.Dictionary`2.TryInsert(TKey key, TValue value, InsertionBehavior behavior)
+   at System.Collections.Generic.Dictionary`2.Add(TKey key, TValue value)
+   at System.Linq.Enumerable.ToDictionary[TSource,TKey,TElement](IEnumerable`1 source, Func`2 keySelector, Func`2 elementSelector, IEqualityComparer`1 comparer)
+   at WaxIPTV.Services.EpgMapper.MapProgrammesInBatches(IEnumerable`1 programmes, List`1 channels, Dictionary`2 channelNames, Int32 batchSize, Dictionary`2 overrides) in Z:\WaxIPTV\Services\EpgMapper.cs:line 62
+   at WaxIPTV.Views.MainWindow.LoadEpgAsync(String source, Int32 refreshHours, Boolean force) in Z:\WaxIPTV\Views\MainWindow.xaml.cs:line 623
+2025-08-18 14:49:37.238 -06:00 [INF] EPG load complete with 0 programmes
+2025-08-18 14:49:37.239 -06:00 [INF] Refreshed EPG with 0 programmes
+2025-08-18 14:49:37.239 -06:00 [INF] No EPG data for CVM (Jamaica)
+2025-08-18 14:49:37.969 -06:00 [INF] Channel selected Fox Sports 504 FHD
+2025-08-18 14:49:37.969 -06:00 [INF] Channel selection changed to Fox Sports 504 FHD
+2025-08-18 14:49:38.673 -06:00 [INF] Channel selected TSN1
+2025-08-18 14:49:38.673 -06:00 [INF] Channel selection changed to TSN1
+2025-08-18 14:49:39.168 -06:00 [INF] Channel selected Sky Sport PL NZ
+2025-08-18 14:49:39.169 -06:00 [INF] Channel selection changed to Sky Sport PL NZ
+2025-08-18 14:49:39.169 -06:00 [INF] Channel double-click in list Sky Sport PL NZ
+2025-08-18 14:49:39.169 -06:00 [INF] Channel double-clicked Sky Sport PL NZ
+2025-08-18 14:49:39.170 -06:00 [INF] Play request for Sky Sport PL NZ
+2025-08-18 14:49:39.170 -06:00 [INF] Starting player process
+2025-08-18 14:49:39.171 -06:00 [INF] Starting mpv process [redacted]
+2025-08-18 14:49:39.242 -06:00 [INF] Channel double-clicked Sky Sport PL NZ
+2025-08-18 14:49:39.242 -06:00 [INF] Play request for Sky Sport PL NZ
+2025-08-18 14:49:39.242 -06:00 [INF] Starting player process
+2025-08-18 14:49:39.242 -06:00 [INF] Starting mpv process [redacted]
+2025-08-18 14:49:39.344 -06:00 [INF] mpv started
+2025-08-18 14:49:39.344 -06:00 [INF] mpv started
+2025-08-18 14:49:39.700 -06:00 [INF] Channel selected NL: Ziggo Sport 4 FHD
+2025-08-18 14:49:39.700 -06:00 [INF] Channel selection changed to NL: Ziggo Sport 4 FHD
+2025-08-18 14:49:40.153 -06:00 [INF] Channel selected Bloomberg TV UHD
+2025-08-18 14:49:40.153 -06:00 [INF] Channel selection changed to Bloomberg TV UHD
+2025-08-18 14:49:40.153 -06:00 [INF] Channel double-click in list Bloomberg TV UHD
+2025-08-18 14:49:40.153 -06:00 [INF] Channel double-clicked Bloomberg TV UHD
+2025-08-18 14:49:40.153 -06:00 [INF] Play request for Bloomberg TV UHD
+2025-08-18 14:49:40.153 -06:00 [INF] Using existing mpv instance
+2025-08-18 14:49:40.153 -06:00 [INF] mpv load [redacted]
+2025-08-18 14:49:40.153 -06:00 [INF] Channel double-clicked Bloomberg TV UHD
+2025-08-18 14:49:40.153 -06:00 [INF] Play request for Bloomberg TV UHD
+2025-08-18 14:49:40.153 -06:00 [INF] Using existing mpv instance
+2025-08-18 14:49:40.154 -06:00 [INF] mpv load [redacted]
+2025-08-18 14:49:40.605 -06:00 [INF] Channel selected UK: TNT Sports Ultimate UHD
+2025-08-18 14:49:40.605 -06:00 [INF] Channel selection changed to UK: TNT Sports Ultimate UHD
+2025-08-18 14:49:44.425 -06:00 [INF] Channel selected CNN UK FHD
+2025-08-18 14:49:44.425 -06:00 [INF] Channel selection changed to CNN UK FHD
+2025-08-18 14:49:44.803 -06:00 [INF] Channel selected Cartoon Network UK FHD
+2025-08-18 14:49:44.803 -06:00 [INF] Channel selection changed to Cartoon Network UK FHD
+2025-08-18 14:49:45.501 -06:00 [INF] Channel selected Sky Cinema Premiere FHD
+2025-08-18 14:49:45.501 -06:00 [INF] Channel selection changed to Sky Cinema Premiere FHD
+2025-08-18 14:49:46.032 -06:00 [INF] Channel selected TNT Sports 4 FHD
+2025-08-18 14:49:46.032 -06:00 [INF] Channel selection changed to TNT Sports 4 FHD
+2025-08-18 14:49:46.502 -06:00 [INF] Channel selected .OH.us" tvg-logo="https://i.imgur.com/3BUnPYf.png" group-title="A1xmedia US Channels" radio="false",NBC
+2025-08-18 14:49:46.502 -06:00 [INF] Channel selection changed to .OH.us" tvg-logo="https://i.imgur.com/3BUnPYf.png" group-title="A1xmedia US Channels" radio="false",NBC
+2025-08-18 14:49:46.502 -06:00 [INF] Channel double-click in list .OH.us" tvg-logo="https://i.imgur.com/3BUnPYf.png" group-title="A1xmedia US Channels" radio="false",NBC
+2025-08-18 14:49:46.502 -06:00 [INF] Channel double-clicked .OH.us" tvg-logo="https://i.imgur.com/3BUnPYf.png" group-title="A1xmedia US Channels" radio="false",NBC
+2025-08-18 14:49:46.502 -06:00 [INF] Play request for .OH.us" tvg-logo="https://i.imgur.com/3BUnPYf.png" group-title="A1xmedia US Channels" radio="false",NBC
+2025-08-18 14:49:46.502 -06:00 [INF] Starting player process
+2025-08-18 14:49:46.502 -06:00 [INF] Starting mpv process [redacted]
+2025-08-18 14:49:46.538 -06:00 [INF] Channel double-clicked .OH.us" tvg-logo="https://i.imgur.com/3BUnPYf.png" group-title="A1xmedia US Channels" radio="false",NBC
+2025-08-18 14:49:46.538 -06:00 [INF] Play request for .OH.us" tvg-logo="https://i.imgur.com/3BUnPYf.png" group-title="A1xmedia US Channels" radio="false",NBC
+2025-08-18 14:49:46.539 -06:00 [INF] Using existing mpv instance
+2025-08-18 14:49:46.539 -06:00 [INF] mpv load [redacted]
+2025-08-18 14:49:46.539 -06:00 [INF] mpv started
+2025-08-18 14:49:46.999 -06:00 [INF] Channel selected ESPN News HD
+2025-08-18 14:49:46.999 -06:00 [INF] Channel selection changed to ESPN News HD
+2025-08-18 14:49:47.451 -06:00 [INF] Channel selected NBC Sports Philadelphia
+2025-08-18 14:49:47.451 -06:00 [INF] Channel selection changed to NBC Sports Philadelphia
+2025-08-18 14:49:47.451 -06:00 [INF] Channel double-click in list NBC Sports Philadelphia
+2025-08-18 14:49:47.451 -06:00 [INF] Channel double-clicked NBC Sports Philadelphia
+2025-08-18 14:49:47.451 -06:00 [INF] Play request for NBC Sports Philadelphia
+2025-08-18 14:49:47.452 -06:00 [INF] Using existing mpv instance
+2025-08-18 14:49:47.452 -06:00 [INF] mpv load [redacted]
+2025-08-18 14:49:47.452 -06:00 [INF] Channel double-clicked NBC Sports Philadelphia
+2025-08-18 14:49:47.452 -06:00 [INF] Play request for NBC Sports Philadelphia
+2025-08-18 14:49:47.452 -06:00 [INF] Using existing mpv instance
+2025-08-18 14:49:47.453 -06:00 [INF] mpv load [redacted]
+2025-08-18 14:50:07.231 -06:00 [INF] No EPG data for NBC Sports Philadelphia
+2025-08-18 14:50:15.942 -06:00 [ERR] Unhandled dispatcher exception
+System.InvalidOperationException: DialogResult can be set only after Window is created and shown as dialog.
+   at System.Windows.Window.set_DialogResult(Nullable`1 value)
+   at WaxIPTV.ViewModels.SettingsViewModel.SaveAndClose(Window window) in Z:\WaxIPTV\ViewModels\SettingsViewModel.cs:line 349
+   at CommunityToolkit.Mvvm.Input.AsyncRelayCommand.AwaitAndThrowIfFailed(Task executionTask)
+   at System.Threading.Tasks.Task.<>c.<ThrowAsync>b__128_0(Object state)
+   at System.Windows.Threading.ExceptionWrapper.InternalRealCall(Delegate callback, Object args, Int32 numArgs)
+   at System.Windows.Threading.ExceptionWrapper.TryCatchWhen(Object source, Delegate callback, Object args, Int32 numArgs, Delegate catchHandler)
+2025-08-18 14:50:18.814 -06:00 [INF] Loading settings from [redacted]
+2025-08-18 14:50:36.534 -06:00 [INF] Parsing EPG XML
+2025-08-18 14:50:39.328 -06:00 [INF] Mapping 551272 programmes
+2025-08-18 14:50:39.328 -06:00 [ERR] Failed to parse or map EPG
+System.ArgumentException: An item with the same key has already been added. Key: 24.7.Dummy.us
+   at System.Collections.Generic.Dictionary`2.TryInsert(TKey key, TValue value, InsertionBehavior behavior)
+   at System.Collections.Generic.Dictionary`2.Add(TKey key, TValue value)
+   at System.Linq.Enumerable.ToDictionary[TSource,TKey,TElement](IEnumerable`1 source, Func`2 keySelector, Func`2 elementSelector, IEqualityComparer`1 comparer)
+   at WaxIPTV.Services.EpgMapper.MapProgrammesInBatches(IEnumerable`1 programmes, List`1 channels, Dictionary`2 channelNames, Int32 batchSize, Dictionary`2 overrides) in Z:\WaxIPTV\Services\EpgMapper.cs:line 62
+   at WaxIPTV.Views.MainWindow.LoadEpgAsync(String source, Int32 refreshHours, Boolean force) in Z:\WaxIPTV\Views\MainWindow.xaml.cs:line 623
+2025-08-18 14:50:39.328 -06:00 [INF] EPG load complete with 0 programmes
+2025-08-18 14:50:39.336 -06:00 [INF] No EPG data for NBC Sports Philadelphia
+2025-08-18 14:50:39.341 -06:00 [INF] No EPG data for NBC Sports Philadelphia
+2025-08-18 14:51:09.348 -06:00 [INF] No EPG data for NBC Sports Philadelphia
+2025-08-18 14:51:20.858 -06:00 [INF] Main window closing
+2025-08-18 14:51:20.859 -06:00 [INF] mpv quit
+2025-08-18 14:51:20.863 -06:00 [WRN] Error quitting player
+System.IO.IOException: Pipe is broken.
+   at System.IO.Pipes.PipeStream.WriteAsyncCore(ReadOnlyMemory`1 buffer, CancellationToken cancellationToken)
+   at System.IO.Pipes.PipeStream.WriteAsync(Byte[] buffer, Int32 offset, Int32 count, CancellationToken cancellationToken)
+   at WaxIPTV.Services.MpvController.SendAsync(Object payload, CancellationToken ct) in Z:\WaxIPTV\Services\MpvController.cs:line 130
+   at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+   at WaxIPTV.Services.MpvController.SendAsync(Object payload, CancellationToken ct)
+   at WaxIPTV.Services.MpvController.QuitAsync(CancellationToken ct) in Z:\WaxIPTV\Services\MpvController.cs:line 88
+   at WaxIPTV.Views.MainWindow.OnClosed(EventArgs e) in Z:\WaxIPTV\Views\MainWindow.xaml.cs:line 860
+   at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+   at WaxIPTV.Views.MainWindow.OnClosed(EventArgs e)
+   at System.Windows.Window.WmDestroy()
+   at System.Windows.Window.WindowFilterMessage(IntPtr hwnd, Int32 msg, IntPtr wParam, IntPtr lParam, Boolean& handled)
+   at System.Windows.Interop.HwndSource.PublicHooksFilterMessage(IntPtr hwnd, Int32 msg, IntPtr wParam, IntPtr lParam, Boolean& handled)
+   at MS.Win32.HwndWrapper.WndProc(IntPtr hwnd, Int32 msg, IntPtr wParam, IntPtr lParam, Boolean& handled)
+   at System.Windows.Threading.ExceptionWrapper.InternalRealCall(Delegate callback, Object args, Int32 numArgs)
+   at System.Windows.Threading.ExceptionWrapper.TryCatchWhen(Object source, Delegate callback, Object args, Int32 numArgs, Delegate catchHandler)
+   at System.Windows.Threading.Dispatcher.LegacyInvokeImpl(DispatcherPriority priority, TimeSpan timeout, Delegate method, Object args, Int32 numArgs)
+   at MS.Win32.HwndSubclass.SubclassWndProc(IntPtr hwnd, Int32 msg, IntPtr wParam, IntPtr lParam)
+   at MS.Win32.UnsafeNativeMethods.CallWindowProc(IntPtr wndProc, IntPtr hWnd, Int32 msg, IntPtr wParam, IntPtr lParam)
+   at MS.Win32.UnsafeNativeMethods.CallWindowProc(IntPtr wndProc, IntPtr hWnd, Int32 msg, IntPtr wParam, IntPtr lParam)
+   at MS.Win32.HwndSubclass.DefWndProcWrapper(IntPtr hwnd, Int32 msg, IntPtr wParam, IntPtr lParam)
+   at MS.Win32.UnsafeNativeMethods.CallWindowProc(IntPtr wndProc, IntPtr hWnd, Int32 msg, IntPtr wParam, IntPtr lParam)
+   at MS.Win32.UnsafeNativeMethods.CallWindowProc(IntPtr wndProc, IntPtr hWnd, Int32 msg, IntPtr wParam, IntPtr lParam)
+   at MS.Win32.HwndSubclass.SubclassWndProc(IntPtr hwnd, Int32 msg, IntPtr wParam, IntPtr lParam)
+   at MS.Win32.UnsafeNativeMethods.CallWindowProc(IntPtr wndProc, IntPtr hWnd, Int32 msg, IntPtr wParam, IntPtr lParam)
+   at MS.Win32.UnsafeNativeMethods.CallWindowProc(IntPtr wndProc, IntPtr hWnd, Int32 msg, IntPtr wParam, IntPtr lParam)
+   at MS.Win32.HwndSubclass.DefWndProcWrapper(IntPtr hwnd, Int32 msg, IntPtr wParam, IntPtr lParam)
+   at MS.Win32.UnsafeNativeMethods.CallWindowProc(IntPtr wndProc, IntPtr hWnd, Int32 msg, IntPtr wParam, IntPtr lParam)
+   at MS.Win32.UnsafeNativeMethods.CallWindowProc(IntPtr wndProc, IntPtr hWnd, Int32 msg, IntPtr wParam, IntPtr lParam)
+   at MS.Win32.HwndSubclass.SubclassWndProc(IntPtr hwnd, Int32 msg, IntPtr wParam, IntPtr lParam)
+   at MS.Win32.UnsafeNativeMethods.CallWindowProc(IntPtr wndProc, IntPtr hWnd, Int32 msg, IntPtr wParam, IntPtr lParam)
+   at MS.Win32.UnsafeNativeMethods.CallWindowProc(IntPtr wndProc, IntPtr hWnd, Int32 msg, IntPtr wParam, IntPtr lParam)
+   at MS.Win32.HwndSubclass.DefWndProcWrapper(IntPtr hwnd, Int32 msg, IntPtr wParam, IntPtr lParam)
+   at MS.Win32.UnsafeNativeMethods.CallWindowProc(IntPtr wndProc, IntPtr hWnd, Int32 msg, IntPtr wParam, IntPtr lParam)
+   at MS.Win32.UnsafeNativeMethods.CallWindowProc(IntPtr wndProc, IntPtr hWnd, Int32 msg, IntPtr wParam, IntPtr lParam)
+   at MS.Win32.HwndSubclass.SubclassWndProc(IntPtr hwnd, Int32 msg, IntPtr wParam, IntPtr lParam)
+   at MS.Win32.UnsafeNativeMethods.DispatchMessage(MSG& msg)
+   at MS.Win32.UnsafeNativeMethods.DispatchMessage(MSG& msg)
+   at System.Windows.Threading.Dispatcher.PushFrameImpl(DispatcherFrame frame)
+   at System.Windows.Application.RunDispatcher(Object ignore)
+   at System.Windows.Application.RunInternal(Window window)
+   at WaxIPTV.App.Main()
+--- End of stack trace from previous location ---
+   at WaxIPTV.Services.MpvController.SendAsync(Object payload, CancellationToken ct) in Z:\WaxIPTV\Services\MpvController.cs:line 130
+   at WaxIPTV.Views.MainWindow.OnClosed(EventArgs e) in Z:\WaxIPTV\Views\MainWindow.xaml.cs:line 860
+2025-08-18 14:51:20.863 -06:00 [INF] mpv quit
