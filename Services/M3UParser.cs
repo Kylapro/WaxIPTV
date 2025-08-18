@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using WaxIPTV.Models;
+using WaxIPTV.Services.Logging;
 
 namespace WaxIPTV.Services
 {
@@ -29,6 +30,7 @@ namespace WaxIPTV.Services
         /// <returns>A list of channels extracted from the playlist.</returns>
         public static List<Channel> Parse(string m3u)
         {
+            using var scope = AppLog.BeginScope("M3UParse");
             var channels = new List<Channel>();
             Dictionary<string, string>? meta = null;
             string? title = null;
@@ -72,6 +74,7 @@ namespace WaxIPTV.Services
                     title = null;
                 }
             }
+            AppLog.Logger.Information("Parsed {Count} channels from playlist", channels.Count);
             return channels;
         }
     }

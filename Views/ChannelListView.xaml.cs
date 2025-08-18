@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Windows.Controls;
 using System.Windows.Input;
 using WaxIPTV.Models;
+using WaxIPTV.Services.Logging;
 
 namespace WaxIPTV.Views
 {
@@ -41,6 +43,7 @@ namespace WaxIPTV.Views
         public void SetItems(IEnumerable<Channel> channels)
         {
             ChannelList.ItemsSource = channels;
+            AppLog.Logger.Information("Channel list populated with {Count} items", channels.Count());
         }
 
         /// <summary>
@@ -82,6 +85,7 @@ namespace WaxIPTV.Views
         {
             if (ChannelList.SelectedItem is Channel ch)
             {
+                AppLog.Logger.Information("Channel double-click in list {Name}", ch.Name);
                 ChannelActivated?.Invoke(this, new ChannelEventArgs(ch));
             }
         }
@@ -93,6 +97,8 @@ namespace WaxIPTV.Views
         private void ChannelList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             SelectionChanged?.Invoke(this, e);
+            if (ChannelList.SelectedItem is Channel ch)
+                AppLog.Logger.Information("Channel selection changed to {Name}", ch.Name);
         }
 
         // (No additional initialization logic is required beyond
