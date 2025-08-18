@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using WaxIPTV.Models;
+using WaxIPTV.Services.Logging;
 
 namespace WaxIPTV.Services
 {
@@ -30,6 +31,7 @@ namespace WaxIPTV.Services
             Dictionary<string, string> channelNames,
             Dictionary<string, string>? overrides = null)
         {
+            AppLog.Logger.Information("Mapping {ProgCount} programmes", programmes.Count);
             return MapProgrammesInBatches(programmes, channels, channelNames, int.MaxValue, overrides);
         }
 
@@ -55,6 +57,7 @@ namespace WaxIPTV.Services
             int batchSize,
             Dictionary<string, string>? overrides = null)
         {
+            using var scope = AppLog.BeginScope("EpgMap");
             overrides ??= new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             var channelsByTvgId = channels
                 .Where(c => !string.IsNullOrEmpty(c.TvgId))
@@ -219,6 +222,7 @@ namespace WaxIPTV.Services
             foreach (var list in result.Values)
                 list.Sort((a, b) => a.StartUtc.CompareTo(b.StartUtc));
 
+            AppLog.Logger.Information("Mapped programmes for {ChannelCount} channels", result.Count);
             return result;
         }
 

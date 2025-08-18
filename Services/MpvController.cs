@@ -4,6 +4,7 @@ using System.IO.Pipes;
 using System.Threading;
 using System.Threading.Tasks;
 using System.IO;
+using WaxIPTV.Services.Logging;
 
 namespace WaxIPTV.Services
 {
@@ -42,6 +43,7 @@ namespace WaxIPTV.Services
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
+            AppLog.Logger.Information("Starting mpv process {Path}", AppLog.Safe(_mpvPath));
             _proc = Process.Start(psi) ?? throw new Exception("Failed to start mpv");
             // Wait for pipe to appear and connect
             _pipe = new NamedPipeClientStream(
@@ -65,6 +67,7 @@ namespace WaxIPTV.Services
             }
             // Set initial volume to 100%
             await SendAsync(new { command = new object[] { "set_property", "volume", 100 } }, ct);
+            AppLog.Logger.Information("mpv started");
         }
 
         /// <summary>
@@ -72,6 +75,7 @@ namespace WaxIPTV.Services
         /// </summary>
         public Task PauseAsync(bool pause, CancellationToken ct = default)
         {
+            AppLog.Logger.Information("mpv pause {Pause}", pause);
             return SendAsync(new { command = new object[] { "set_property", "pause", pause } }, ct);
         }
 
@@ -80,6 +84,7 @@ namespace WaxIPTV.Services
         /// </summary>
         public Task QuitAsync(CancellationToken ct = default)
         {
+            AppLog.Logger.Information("mpv quit");
             return SendAsync(new { command = new object[] { "quit" } }, ct);
         }
 
@@ -109,6 +114,7 @@ namespace WaxIPTV.Services
             {
                 return Task.CompletedTask;
             }
+            AppLog.Logger.Information("mpv load {Url}", AppLog.Safe(url));
             return SendAsync(new { command = new object[] { "loadfile", url, "replace" } }, ct);
         }
 
@@ -123,6 +129,7 @@ namespace WaxIPTV.Services
             var bytes = System.Text.Encoding.UTF8.GetBytes(json);
             await _pipe.WriteAsync(bytes, 0, bytes.Length, ct);
             await _pipe.FlushAsync(ct);
+            AppLog.Logger.Debug("mpv cmd {Json}", AppLog.Safe(json.Trim()));
         }
 
         /// <summary>

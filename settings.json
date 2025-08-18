@@ -5,7 +5,10 @@
   "playlistUrl": "D:\\iptv\\channels.m3u8",
   "xmltvUrl": "D:\\iptv\\guide.xml",
   "epgRefreshHours": 12,
-  "epgIdAliases": {}
-  ,
-  "epgShiftMinutes": 0
+  "epgIdAliases": {},
+  "epgShiftMinutes": 0,
+  "logLevel": "Information",
+  "logIncludeSensitive": false,
+  "logRetainedDays": 7,
+  "logMaxFileBytes": 5242880
 }
