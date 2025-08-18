@@ -346,14 +346,34 @@ namespace WaxIPTV.ViewModels
                 await DownloadEpg();
             }
 
-            window.DialogResult = true;
+            try
+            {
+                if (window.IsVisible)
+                {
+                    window.DialogResult = true;
+                }
+            }
+            catch (InvalidOperationException)
+            {
+                // Window was not shown as a dialog; ignore failure to set DialogResult.
+            }
             window.Close();
         }
 
         [RelayCommand]
         private void Cancel(Window window)
         {
-            window.DialogResult = false;
+            try
+            {
+                if (window.IsVisible)
+                {
+                    window.DialogResult = false;
+                }
+            }
+            catch (InvalidOperationException)
+            {
+                // Window was not shown as a dialog; ignore failure to set DialogResult.
+            }
             window.Close();
         }
 

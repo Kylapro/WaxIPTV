@@ -127,9 +127,20 @@ namespace WaxIPTV.Services
                 return;
             var json = System.Text.Json.JsonSerializer.Serialize(payload) + "\n";
             var bytes = System.Text.Encoding.UTF8.GetBytes(json);
-            await _pipe.WriteAsync(bytes, 0, bytes.Length, ct);
-            await _pipe.FlushAsync(ct);
-            AppLog.Logger.Debug("mpv cmd {Json}", AppLog.Safe(json.Trim()));
+            try
+            {
+                await _pipe.WriteAsync(bytes, 0, bytes.Length, ct);
+                await _pipe.FlushAsync(ct);
+                AppLog.Logger.Debug("mpv cmd {Json}", AppLog.Safe(json.Trim()));
+            }
+            catch (IOException ex)
+            {
+                AppLog.Logger.Warning(ex, "Failed to send command to mpv");
+            }
+            catch (ObjectDisposedException ex)
+            {
+                AppLog.Logger.Warning(ex, "Failed to send command to mpv");
+            }
         }
 
         /// <summary>
