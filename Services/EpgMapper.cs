@@ -110,9 +110,15 @@ namespace WaxIPTV.Services
                     tlist.Add(c);
                 }
             }
-            var channelIndex = channels
-                .Select((c, i) => new { c.Id, Index = i })
-                .ToDictionary(x => x.Id, x => x.Index, StringComparer.OrdinalIgnoreCase);
+            var channelIndex = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            for (var i = 0; i < channels.Count; i++)
+            {
+                var c = channels[i];
+                if (!channelIndex.TryAdd(c.Id, i))
+                {
+                    AppLog.Logger.Warning("Duplicate channel ID {ChannelId} encountered; keeping first occurrence", c.Id);
+                }
+            }
 
             var result = new Dictionary<string, List<Programme>>();
 
