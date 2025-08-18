@@ -5,6 +5,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
+using WaxIPTV.Services.Logging;
 
 namespace WaxIPTV.Services
 {
@@ -42,6 +43,7 @@ namespace WaxIPTV.Services
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
+            AppLog.Logger.Information("Starting VLC process {Path}", AppLog.Safe(_vlcPath));
             _proc = Process.Start(psi) ?? throw new Exception("Failed to start VLC");
             // Attempt to connect to the RC socket.  VLC may take a moment to open it.
             for (int i = 0; i < 30; i++)
@@ -52,6 +54,7 @@ namespace WaxIPTV.Services
                     await _client.ConnectAsync(IPAddress.Loopback, _port, ct);
                     var stream = _client.GetStream();
                     _out = new StreamWriter(stream) { AutoFlush = true };
+                    AppLog.Logger.Information("Connected to VLC RC on port {Port}", _port);
                     break;
                 }
                 catch
@@ -65,6 +68,7 @@ namespace WaxIPTV.Services
         public Task PauseAsync(bool pause, CancellationToken ct = default)
         {
             var cmd = pause ? "pause" : "play";
+            AppLog.Logger.Information("VLC command {Cmd}", cmd);
             return SendAsync(cmd);
         }
 
@@ -75,6 +79,7 @@ namespace WaxIPTV.Services
         /// </summary>
         public Task StopAsync()
         {
+            AppLog.Logger.Information("VLC stop");
             return SendAsync("stop");
         }
 
@@ -87,6 +92,7 @@ namespace WaxIPTV.Services
         /// </summary>
         public Task QuitAsync(CancellationToken ct = default)
         {
+            AppLog.Logger.Information("VLC quit");
             return SendAsync("quit");
         }
 
@@ -95,6 +101,7 @@ namespace WaxIPTV.Services
         /// </summary>
         public Task SetVolumeAsync(int pct)
         {
+            AppLog.Logger.Information("VLC volume {Pct}", pct);
             return SendAsync($"volume {pct}");
         }
 
@@ -102,6 +109,7 @@ namespace WaxIPTV.Services
         {
             if (_out == null) return;
             await _out.WriteLineAsync(cmd);
+            AppLog.Logger.Debug("VLC cmd {Cmd}", AppLog.Safe(cmd));
         }
 
         /// <inheritdoc />

@@ -69,5 +69,31 @@ namespace WaxIPTV.Models
         /// </summary>
         [JsonPropertyName("epgShiftMinutes")]
         public int EpgShiftMinutes { get; set; } = 0;
+
+        /// <summary>
+        /// Minimum log level to record. Valid values correspond to Serilog levels
+        /// such as "Information", "Debug" or "Verbose".
+        /// </summary>
+        [JsonPropertyName("logLevel")]
+        public string LogLevel { get; set; } = "Information";
+
+        /// <summary>
+        /// When true, potentially sensitive data such as URLs and file paths will be
+        /// included in log entries. Defaults to false to avoid leaking information.
+        /// </summary>
+        [JsonPropertyName("logIncludeSensitive")]
+        public bool LogIncludeSensitive { get; set; } = false;
+
+        /// <summary>
+        /// Number of days to retain rolling log files before deletion.
+        /// </summary>
+        [JsonPropertyName("logRetainedDays")]
+        public int LogRetainedDays { get; set; } = 7;
+
+        /// <summary>
+        /// Maximum size in bytes for an individual log file before it rolls.
+        /// </summary>
+        [JsonPropertyName("logMaxFileBytes")]
+        public long LogMaxFileBytes { get; set; } = 5 * 1024 * 1024; // 5 MB
     }
 }

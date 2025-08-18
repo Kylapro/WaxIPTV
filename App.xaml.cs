@@ -1,6 +1,7 @@
 using System.Windows;
 using WaxIPTV.Models;
 using WaxIPTV.Services;
+using WaxIPTV.Services.Logging;
 using WaxIPTV.Views;
 
 namespace WaxIPTV
@@ -21,9 +22,25 @@ namespace WaxIPTV
         /// </summary>
         private void OnStartup(object sender, StartupEventArgs e)
         {
-            // Load settings from disk; this populates the Settings property
+            // Load settings and configure logging before proceeding
             _settingsService.Load();
             var settings = _settingsService.Settings;
+            AppLog.Init(settings);
+            AppLog.Logger.Information("Application starting");
+
+            // Register global exception handlers
+            AppDomain.CurrentDomain.UnhandledException += (_, ex) =>
+                AppLog.Logger.Error(ex.ExceptionObject as Exception, "Unhandled domain exception");
+            DispatcherUnhandledException += (_, ex) =>
+            {
+                AppLog.Logger.Error(ex.Exception, "Unhandled dispatcher exception");
+                ex.Handled = true;
+            };
+            System.Threading.Tasks.TaskScheduler.UnobservedTaskException += (_, ex) =>
+            {
+                AppLog.Logger.Error(ex.Exception, "Unobserved task exception");
+                ex.SetObserved();
+            };
 
             // Always show the main window first.  The channel list will
             // appear immediately.  If critical information is missing
@@ -84,6 +101,7 @@ namespace WaxIPTV
                 };
                 watcher.Changed += (s, e) =>
                 {
+                    AppLog.Logger.Information("Theme file changed, reloading");
                     // Use dispatcher to update UI resources on the main thread
                     Application.Current.Dispatcher.Invoke(() =>
                     {
@@ -91,10 +109,11 @@ namespace WaxIPTV
                         {
                             var json = System.IO.File.ReadAllText(themePath);
                             WaxIPTV.Theming.ThemeLoader.ApplyThemeJson(json, Application.Current.Resources);
+                            AppLog.Logger.Information("Theme reloaded");
                         }
-                        catch
+                        catch (Exception ex)
                         {
-                            // Ignore errors during theme reload
+                            AppLog.Logger.Error(ex, "Failed to reload theme");
                         }
                     });
                 };
@@ -103,6 +122,7 @@ namespace WaxIPTV
             catch
             {
                 // If the watcher can't be created (e.g. due to permissions), silently fail
+                AppLog.Logger.Warning("Theme watcher could not be created");
             }
         }
     }

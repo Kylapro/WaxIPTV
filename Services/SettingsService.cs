@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text.Json;
 using WaxIPTV.Models;
 using Microsoft.Win32;
+using WaxIPTV.Services.Logging;
 
 namespace WaxIPTV.Services
 {
@@ -43,6 +44,7 @@ namespace WaxIPTV.Services
         {
             if (File.Exists(_settingsFilePath))
             {
+                AppLog.Logger.Information("Loading settings from {Path}", AppLog.Safe(_settingsFilePath));
                 var json = File.ReadAllText(_settingsFilePath);
                 var loaded = JsonSerializer.Deserialize<AppSettings>(json);
                 if (loaded != null)
@@ -52,6 +54,7 @@ namespace WaxIPTV.Services
             }
             else
             {
+                AppLog.Logger.Information("Settings file not found, attempting to auto-detect players");
                 // Attempt to detect player executables when no settings file exists
                 Settings.MpvPath = FindMpvPath();
                 Settings.VlcPath = FindVlcPath();
@@ -71,6 +74,7 @@ namespace WaxIPTV.Services
                 Settings = settings;
             }
             var json = JsonSerializer.Serialize(Settings, new JsonSerializerOptions { WriteIndented = true });
+            AppLog.Logger.Information("Saving settings to {Path}", AppLog.Safe(_settingsFilePath));
             File.WriteAllText(_settingsFilePath, json);
         }
 
@@ -86,7 +90,9 @@ namespace WaxIPTV.Services
             if (dir == null)
                 return null;
             var path = Path.Combine(dir, "vlc.exe");
-            return File.Exists(path) ? path : null;
+            var exists = File.Exists(path) ? path : null;
+            AppLog.Logger.Information("Detected VLC at {Path}", AppLog.Safe(exists));
+            return exists;
         }
 
         /// <summary>
@@ -118,16 +124,22 @@ namespace WaxIPTV.Services
                 var lines = output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
                 var candidate = lines.FirstOrDefault();
                 if (candidate != null && File.Exists(candidate))
+                {
+                    AppLog.Logger.Information("Detected mpv at {Path}", AppLog.Safe(candidate));
                     return candidate;
+                }
             }
-            catch
+            catch (Exception ex)
             {
+                AppLog.Logger.Warning(ex, "Failed to locate mpv via where command");
                 // ignore and fall back to common path
             }
 
             // Fallback to common installation path
             var common = @"C:\\Program Files\\mpv\\mpv.exe";
-            return File.Exists(common) ? common : null;
+            var exists = File.Exists(common) ? common : null;
+            AppLog.Logger.Information("Fallback mpv detection returned {Path}", AppLog.Safe(exists));
+            return exists;
         }
     }
 }

@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using System.Text;
 using WaxIPTV.Models;
 using WaxIPTV.Services;
+using WaxIPTV.Services.Logging;
 
 namespace WaxIPTV.Views
 {
@@ -144,6 +145,7 @@ namespace WaxIPTV.Views
         /// </summary>
         public async System.Threading.Tasks.Task LoadFromSettingsAsync()
         {
+            AppLog.Logger.Information("Loading configuration and data");
             // Cancel any pending EPG refresh loop before reloading
             _epgRefreshCts?.Cancel();
 
@@ -177,6 +179,7 @@ namespace WaxIPTV.Views
 
             // Asynchronously load channels
             await LoadChannelsAsync(settings.PlaylistUrl);
+            AppLog.Logger.Information("Loaded {Count} channels", _channels.Count);
             ChannelList.SetItems(_channels);
             // Populate the group filter and apply default filtering.  This must be
             // executed on the UI thread; we are already on it because this method
@@ -190,6 +193,7 @@ namespace WaxIPTV.Views
             // programmes.  Subsequent reloads will be controlled by the EPG refresh loop or
             // user actions.
             await LoadEpgAsync(settings.XmltvUrl, settings.EpgRefreshHours, force: true);
+            AppLog.Logger.Information("EPG loaded with {ProgrammeCount} programmes", _programmes.Sum(kv => kv.Value.Count));
 
             // Update the UI for the first selection if any
             if (_channels.Count > 0)
@@ -251,6 +255,7 @@ namespace WaxIPTV.Views
         /// </summary>
         public async System.Threading.Tasks.Task RefreshFromSettingsAsync()
         {
+            AppLog.Logger.Information("Refreshing data from settings");
             // Ensure we have the latest settings from disk
             _settingsService.Load();
             var s = _settingsService.Settings;
@@ -268,11 +273,13 @@ namespace WaxIPTV.Views
 
             // Load channels
             await LoadChannelsAsync(s.PlaylistUrl);
+            AppLog.Logger.Information("Reloaded {Count} channels", _channels.Count);
             ChannelList.SetItems(_channels);
             PopulateGroupFilterAndApply();
 
             // Load EPG with force to ignore TTL and refresh interval
             await LoadEpgAsync(s.XmltvUrl, s.EpgRefreshHours, force: true);
+            AppLog.Logger.Information("Refreshed EPG with {Programmes} programmes", _programmes.Sum(kv => kv.Value.Count));
             UpdateNowNextForSelected();
 
             // Restart the Now/Next timer with the new refresh interval
@@ -359,6 +366,7 @@ namespace WaxIPTV.Views
         /// <param name="source">Path or URL of the playlist.</param>
         private async System.Threading.Tasks.Task LoadChannelsAsync(string? source)
         {
+            using var scope = AppLog.BeginScope("LoadChannels");
             var channels = new List<Channel>();
             if (!string.IsNullOrWhiteSpace(source))
             {
@@ -386,10 +394,14 @@ namespace WaxIPTV.Views
                         content = string.Empty;
                     }
                     if (!string.IsNullOrEmpty(content))
+                    {
+                        AppLog.Logger.Information("Parsing playlist from {Source}", AppLog.Safe(source));
                         channels = M3UParser.Parse(content);
+                    }
                 }
-                catch
+                catch (Exception ex)
                 {
+                    AppLog.Logger.Error(ex, "Failed to load playlist from {Source}", AppLog.Safe(source));
                     channels = new List<Channel>();
                 }
             }
@@ -414,6 +426,7 @@ namespace WaxIPTV.Views
         /// </summary>
         private async System.Threading.Tasks.Task LoadEpgAsync(string? source, int refreshHours, bool force = false)
         {
+            using var scope = AppLog.BeginScope("LoadEpg");
             // If the EPG source has changed since the last load, always force a reload.  We
             // compare the normalized key of the incoming source against the last used
             // key.  If they differ (including the initial load where _lastEpgKey may be
@@ -432,7 +445,10 @@ namespace WaxIPTV.Views
 
             // If not forcing and the last load was within the refresh interval, skip reloading
             if (!force && _epgLoadedAt + TimeSpan.FromHours(refreshHours) > DateTimeOffset.UtcNow)
+            {
+                AppLog.Logger.Information("Skipping EPG reload; within refresh window");
                 return;
+            }
 
             // Show the main window EPG loading indicator at the beginning of a new load.  Use
             // Dispatcher to ensure UI updates occur on the correct thread.
@@ -448,8 +464,9 @@ namespace WaxIPTV.Views
                     }
                 });
             }
-            catch
+            catch (Exception ex)
             {
+                AppLog.Logger.Warning(ex, "Failed to update EPG loading UI");
                 // Ignore UI update errors; loading will continue without a progress indicator.
             }
 
@@ -466,10 +483,11 @@ namespace WaxIPTV.Views
                     try
                     {
                         xml = await File.ReadAllTextAsync(cachePath);
+                        AppLog.Logger.Information("Loaded EPG from cache");
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        // ignore errors reading cache
+                        AppLog.Logger.Warning(ex, "Failed reading EPG cache");
                     }
                 }
             }
@@ -518,8 +536,9 @@ namespace WaxIPTV.Views
                         }
                     }
                 }
-                catch
+                catch (Exception ex)
                 {
+                    AppLog.Logger.Error(ex, "Failed to fetch EPG from {Source}", AppLog.Safe(source));
                     // ignore fetch errors and fall back to cache
                 }
             }
@@ -531,9 +550,10 @@ namespace WaxIPTV.Views
                 {
                     xml = await File.ReadAllTextAsync(cachePath);
                 }
-                catch
+                catch (Exception ex)
                 {
                     xml = null;
+                    AppLog.Logger.Warning(ex, "Failed to read stale EPG cache");
                 }
             }
 
@@ -542,6 +562,7 @@ namespace WaxIPTV.Views
             {
                 try
                 {
+                    AppLog.Logger.Information("Parsing EPG XML");
                     var channelNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                     // Parse all programmes from the XMLTV into a list so that we can compute
                     // statistics (total count) and apply the time shift uniformly.  The
@@ -570,8 +591,9 @@ namespace WaxIPTV.Views
                             }
                         }
                     }
-                    catch
+                    catch (Exception ex)
                     {
+                        AppLog.Logger.Warning(ex, "Failed applying EPG time shift");
                         // Ignore errors reading the settings and proceed without shifting.
                     }
 
@@ -588,14 +610,16 @@ namespace WaxIPTV.Views
                             overrides = new Dictionary<string, string>(aliasMap, StringComparer.OrdinalIgnoreCase);
                         }
                     }
-                    catch
+                    catch (Exception ex)
                     {
                         // ignore alias loading errors and fall back to null
+                        AppLog.Logger.Warning(ex, "Error processing EPG ID aliases");
                         overrides = null;
                     }
 
                     // Map the programmes to channels using the batched mapper.  Provide the
                     // list of programmes instead of the enumerable to avoid re-enumerating.
+                    AppLog.Logger.Information("Mapping {ProgCount} programmes", programmesList.Count);
                     programmesDict = EpgMapper.MapProgrammesInBatches(programmesList, _channels, channelNames, 200, overrides);
                     // Trim programmes beyond 7 days to limit memory usage
                     var cutoff = DateTimeOffset.UtcNow.AddDays(7);
@@ -720,13 +744,15 @@ namespace WaxIPTV.Views
                         // ignore diagnostics errors
                     }
                 }
-                catch
+                catch (Exception ex)
                 {
                     programmesDict.Clear();
+                    AppLog.Logger.Error(ex, "Failed to parse or map EPG");
                 }
             }
 
             _programmes = programmesDict;
+            AppLog.Logger.Information("EPG load complete with {Programmes} programmes", programmesDict.Sum(kv => kv.Value.Count));
 
             // Hide the main window EPG loading indicator when loading completes.  Also update
             // the status text to indicate completion.  Use Dispatcher to marshal back to
@@ -743,8 +769,9 @@ namespace WaxIPTV.Views
                     }
                 });
             }
-            catch
+            catch (Exception ex)
             {
+                AppLog.Logger.Warning(ex, "Failed to update EPG UI after load");
                 // ignore UI update errors
             }
         }
@@ -759,15 +786,18 @@ namespace WaxIPTV.Views
         {
             if (ChannelList.GetSelected() is not Channel selected)
             {
+                AppLog.Logger.Information("Channel selection cleared");
                 SelectedChannelTitle.Text = string.Empty;
                 NowNext.UpdateProgrammes(null, null);
                 return;
             }
+            AppLog.Logger.Information("Channel selected {Name}", selected.Name);
             SelectedChannelTitle.Text = selected.Name;
             if (_programmes.TryGetValue(selected.Id, out var progs))
             {
                 var (now, next) = EpgHelpers.GetNowNext(progs, DateTimeOffset.UtcNow);
                 NowNext.UpdateProgrammes(now, next);
+                AppLog.Logger.Information("Now playing {Now} next {Next}", now?.Title, next?.Title);
             }
             else
             {
@@ -787,10 +817,12 @@ namespace WaxIPTV.Views
             {
                 var (now, next) = EpgHelpers.GetNowNext(progs, DateTimeOffset.UtcNow);
                 NowNext.UpdateProgrammes(now, next);
+                AppLog.Logger.Information("Updated Now/Next for {Channel}: {Now} -> {Next}", selected.Name, now?.Title, next?.Title);
             }
             else
             {
                 NowNext.UpdateProgrammes(null, null);
+                AppLog.Logger.Information("No EPG data for {Channel}", selected.Name);
             }
         }
 
@@ -801,23 +833,24 @@ namespace WaxIPTV.Views
         /// </summary>
         protected override async void OnClosed(EventArgs e)
         {
+            AppLog.Logger.Information("Main window closing");
             // Stop the periodic Now/Next timer
             try
             {
                 _nowNextTimer?.Stop();
             }
-            catch
+            catch (Exception ex)
             {
-                // ignore any timer errors
+                AppLog.Logger.Warning(ex, "Error stopping timer");
             }
             // Cancel the EPG refresh loop
             try
             {
                 _epgRefreshCts?.Cancel();
             }
-            catch
+            catch (Exception ex)
             {
-                // ignore cancellation errors
+                AppLog.Logger.Warning(ex, "Error cancelling EPG refresh");
             }
             // Shut down and dispose the external player
             if (_player != null)
@@ -826,17 +859,17 @@ namespace WaxIPTV.Views
                 {
                     await _player.QuitAsync();
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // ignore errors shutting down the player
+                    AppLog.Logger.Warning(ex, "Error quitting player");
                 }
                 try
                 {
                     await _player.DisposeAsync();
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // ignore disposal errors
+                    AppLog.Logger.Warning(ex, "Error disposing player");
                 }
             }
             base.OnClosed(e);
@@ -851,6 +884,7 @@ namespace WaxIPTV.Views
         /// </summary>
         private async System.Threading.Tasks.Task PlayChannelAsync(Channel ch)
         {
+            AppLog.Logger.Information("Play request for {Channel}", ch.Name);
             // Lazy‑create a player controller on demand.  This allows users to
             // fix a missing or invalid player path in Settings and immediately
             // start playback without restarting the application.  If no player
@@ -889,16 +923,19 @@ namespace WaxIPTV.Views
                 // Use LoadAsync for mpv if it's already running and we previously started it
                 if (_player is MpvController mpv && mpv.IsRunning && _playerStarted)
                 {
+                    AppLog.Logger.Information("Using existing mpv instance");
                     await mpv.LoadAsync(ch.StreamUrl);
                 }
                 else
                 {
+                    AppLog.Logger.Information("Starting player process");
                     await _player.StartAsync(ch.StreamUrl, ch.Name);
                     _playerStarted = true;
                 }
             }
             catch (Exception ex)
             {
+                AppLog.Logger.Error(ex, "Failed to start playback");
                 MessageBox.Show($"Failed to start playback: {ex.Message}", "Playback Error",
                                 MessageBoxButton.OK, MessageBoxImage.Error);
             }
@@ -912,6 +949,7 @@ namespace WaxIPTV.Views
         {
             // When a channel is double‑clicked in the list view, invoke playback
             // using the encapsulated Channel from the event args.
+            AppLog.Logger.Information("Channel double-clicked {Channel}", e.Channel.Name);
             await PlayChannelAsync(e.Channel);
         }
 
