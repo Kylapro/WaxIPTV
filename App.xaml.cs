@@ -39,8 +39,10 @@ namespace WaxIPTV
                 (string.Equals(settings.Player, "vlc", System.StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(settings.VlcPath));
 
             bool missingPlaylist = string.IsNullOrWhiteSpace(settings.PlaylistUrl);
+            // If no XMLTV URL is provided, we cannot load an EPG.  Prompt the user to enter one.
+            bool missingEpg = string.IsNullOrWhiteSpace(settings.XmltvUrl);
 
-            if (missingPlayer || missingPlaylist)
+            if (missingPlayer || missingPlaylist || missingEpg)
             {
                 var dlg = new SettingsWindow(_settingsService, settings);
                 if (dlg.ShowDialog() == true)
