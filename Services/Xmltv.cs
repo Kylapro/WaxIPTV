@@ -96,14 +96,15 @@ namespace WaxIPTV.Services
                             desc = sub.ReadElementContentAsString();
                         }
                     }
-                    // Only include the programme if it has a channel and valid times
+                    // Only include the programme if it has a channel, title and valid times
                     if (!string.IsNullOrWhiteSpace(channelId) &&
+                        !string.IsNullOrWhiteSpace(title) &&
                         start != DateTimeOffset.MinValue &&
                         stop != DateTimeOffset.MinValue &&
                         stop > start)
                     {
                         // Use empty strings for missing fields to avoid nulls; description remains nullable
-                        programmes.Add(new Programme(channelId, start, stop, title ?? string.Empty, desc));
+                        programmes.Add(new Programme(channelId, start, stop, title!.Trim(), desc));
                     }
                 }
             }
@@ -184,11 +185,12 @@ namespace WaxIPTV.Services
                             desc = sub.ReadElementContentAsString();
                     }
                     if (!string.IsNullOrWhiteSpace(channelId) &&
+                        !string.IsNullOrWhiteSpace(title) &&
                         start != DateTimeOffset.MinValue &&
                         stop != DateTimeOffset.MinValue &&
                         stop > start)
                     {
-                        yield return new Programme(channelId, start, stop, title ?? string.Empty, desc);
+                        yield return new Programme(channelId, start, stop, title!.Trim(), desc);
                     }
                 }
             }

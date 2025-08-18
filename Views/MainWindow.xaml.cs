@@ -611,7 +611,22 @@ namespace WaxIPTV.Views
 
                     // Map the programmes to channels using the batched mapper. The stream
                     // enumerates lazily, keeping memory usage low when handling large EPGs.
-                    programmesDict = EpgMapper.MapProgrammesInBatches(programmeStream, _channels, channelNames, 200, overrides);
+                    var progress = new Progress<int>(count =>
+                    {
+                        try
+                        {
+                            Dispatcher.Invoke(() =>
+                            {
+                                if (MainEpgLoadingLabel != null)
+                                    MainEpgLoadingLabel.Text = $"Loading EPG... ({count} programmes)";
+                            });
+                        }
+                        catch
+                        {
+                            // ignore UI update errors
+                        }
+                    });
+                    programmesDict = EpgMapper.MapProgrammesInBatches(programmeStream, _channels, channelNames, 200, overrides, progress);
                     AppLog.Logger.Information("Mapping {ProgCount} programmes", totalProgrammes);
                     // Trim programmes beyond 7 days to limit memory usage
                     var cutoff = DateTimeOffset.UtcNow.AddDays(7);
