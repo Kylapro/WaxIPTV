@@ -1,0 +1,14 @@
+{
+  "player": "mpv",
+  "mpvPath": "Z:\\Downloads\\mpv-x86_64-gcc-20250807-git-c4bc4f6\\mpv.exe",
+  "vlcPath": "C:\\Program Files\\VideoLAN\\VLC\\vlc.exe",
+  "playlistUrl": "https://raw.githubusercontent.com/Drewski2423/DrewLive/main/MergedPlaylist.m3u8",
+  "xmltvUrl": "https://epgshare01.online/epgshare01/epg_ripper_US1.xml.gz",
+  "epgRefreshHours": 12,
+  "epgIdAliases": null,
+  "epgShiftMinutes": 0,
+  "logLevel": "Information",
+  "logIncludeSensitive": false,
+  "logRetainedDays": 7,
+  "logMaxFileBytes": 5242880
+}
