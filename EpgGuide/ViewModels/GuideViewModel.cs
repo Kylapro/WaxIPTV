@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
@@ -10,6 +11,23 @@ namespace WaxIPTV.EpgGuide;
 public sealed class GuideViewModel : INotifyPropertyChanged
 {
     public ObservableCollection<ChannelRow> Channels { get; } = new();
+    public ObservableCollection<ChannelRow> FilteredChannels { get; } = new();
+
+    public ObservableCollection<string> Groups { get; } = new();
+
+    private string _searchText = string.Empty;
+    public string SearchText
+    {
+        get => _searchText;
+        set { _searchText = value; OnPropertyChanged(); ApplyFilters(); }
+    }
+
+    private string? _selectedGroup;
+    public string? SelectedGroup
+    {
+        get => _selectedGroup;
+        set { _selectedGroup = value; OnPropertyChanged(); ApplyFilters(); }
+    }
 
     private DateTime _visibleStartUtc = DateTime.UtcNow.AddMinutes(-15);
     public DateTime VisibleStartUtc { get => _visibleStartUtc; set { _visibleStartUtc = value; OnPropertyChanged(); OnPropertyChanged(nameof(VisibleEndUtc)); OnPropertyChanged(nameof(TimelinePixelWidth)); } }
@@ -44,15 +62,58 @@ public sealed class GuideViewModel : INotifyPropertyChanged
     public void LoadFrom(EpgSnapshot snapshot)
     {
         Channels.Clear();
+        FilteredChannels.Clear();
+
+        var programsByChannel = snapshot.Programs
+            .GroupBy(p => p.ChannelTvgId)
+            .ToDictionary(g => g.Key, g => g.OrderBy(p => p.StartUtc));
+
         foreach (var ch in snapshot.Channels)
         {
-            var row = new ChannelRow { TvgId = ch.TvgId, Number = ch.Number, Name = ch.Name, LogoPath = ch.LogoPath };
-            foreach (var p in snapshot.Programs.Where(p => p.ChannelTvgId == ch.TvgId).OrderBy(p => p.StartUtc))
-                row.Programs.Add(p);
+            var row = new ChannelRow
+            {
+                TvgId = ch.TvgId,
+                Number = ch.Number,
+                Name = ch.Name,
+                Group = ch.Group,
+                LogoPath = ch.LogoPath
+            };
+
+            if (programsByChannel.TryGetValue(ch.TvgId, out var list))
+            {
+                foreach (var p in list)
+                    row.Programs.Add(p);
+            }
+
             Channels.Add(row);
         }
+
+        Groups.Clear();
+        Groups.Add("All");
+        foreach (var g in Channels.Select(c => c.Group).Where(g => !string.IsNullOrWhiteSpace(g)).Distinct().OrderBy(g => g))
+            Groups.Add(g!);
+
+        SelectedGroup = "All";
+        ApplyFilters();
         var now = DateTime.UtcNow;
         VisibleStartUtc = new DateTime(now.Year, now.Month, now.Day, now.Minute < 30 ? now.Hour : now.Hour, now.Minute < 30 ? 0 : 30, 0, DateTimeKind.Utc).AddMinutes(-30);
+    }
+
+    private void ApplyFilters()
+    {
+        IEnumerable<ChannelRow> query = Channels;
+
+        if (!string.IsNullOrWhiteSpace(SearchText))
+            query = query.Where(c => c.Name.Contains(SearchText, StringComparison.OrdinalIgnoreCase));
+
+        if (!string.IsNullOrWhiteSpace(SelectedGroup) && SelectedGroup != "All")
+            query = query.Where(c => string.Equals(c.Group, SelectedGroup, StringComparison.OrdinalIgnoreCase));
+
+        query = query.OrderBy(c => c.Group).ThenBy(c => c.Name);
+
+        FilteredChannels.Clear();
+        foreach (var ch in query)
+            FilteredChannels.Add(ch);
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;

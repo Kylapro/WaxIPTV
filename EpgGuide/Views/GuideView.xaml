@@ -26,17 +26,25 @@
 
   <Grid Background="#0D0F14">
     <Grid.RowDefinitions>
-      <RowDefinition Height="Auto"/>
-      <RowDefinition Height="Auto"/>
-      <RowDefinition Height="*"/>
+      <RowDefinition Height="Auto"/> <!-- Search & filters -->
+      <RowDefinition Height="Auto"/> <!-- Info panel -->
+      <RowDefinition Height="Auto"/> <!-- Headers -->
+      <RowDefinition Height="*"/>     <!-- Grid -->
     </Grid.RowDefinitions>
     <Grid.ColumnDefinitions>
       <ColumnDefinition Width="220"/>
       <ColumnDefinition Width="*"/>
     </Grid.ColumnDefinitions>
 
+    <!-- Search and group filter -->
+    <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="8,4">
+      <TextBox Width="200" Margin="0,0,8,0"
+               Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"/>
+      <ComboBox Width="150" ItemsSource="{Binding Groups}" SelectedItem="{Binding SelectedGroup}"/>
+    </StackPanel>
+
     <!-- Info panel -->
-    <Border Grid.Row="0" Grid.ColumnSpan="2" Background="#121720" Padding="12" BorderBrush="#1E2A3A" BorderThickness="0,0,0,1">
+    <Border Grid.Row="1" Grid.ColumnSpan="2" Background="#121720" Padding="12" BorderBrush="#1E2A3A" BorderThickness="0,0,0,1">
       <StackPanel>
         <TextBlock Text="{Binding SelectedProgram.Title}" FontSize="18" FontWeight="Bold"/>
         <TextBlock Text="{Binding SelectedProgram.StartUtc, StringFormat='{}{0:HH:mm} UTC'}" Opacity="0.7"/>
@@ -45,12 +53,12 @@
     </Border>
 
     <!-- Channel header -->
-    <Border Grid.Row="1" Grid.Column="0" Background="#0B1017" BorderBrush="#1E2A3A" BorderThickness="0,0,1,1">
+    <Border Grid.Row="2" Grid.Column="0" Background="#0B1017" BorderBrush="#1E2A3A" BorderThickness="0,0,1,1">
       <TextBlock Text="Channel" Padding="10,6" FontWeight="Bold"/>
     </Border>
 
     <!-- Hour strip (header) -->
-    <ScrollViewer x:Name="TimelineScroller" Grid.Row="1" Grid.Column="1" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+    <ScrollViewer x:Name="TimelineScroller" Grid.Row="2" Grid.Column="1" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
       <ItemsControl x:Name="HourStrip">
         <ItemsControl.ItemsPanel>
           <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
@@ -59,8 +67,8 @@
     </ScrollViewer>
 
     <!-- Channels column -->
-    <ScrollViewer x:Name="ChannelsScroller" Grid.Row="2" Grid.Column="0" VerticalScrollBarVisibility="Auto">
-      <ItemsControl ItemsSource="{Binding Channels}">
+    <ScrollViewer x:Name="ChannelsScroller" Grid.Row="3" Grid.Column="0" VerticalScrollBarVisibility="Auto">
+      <ItemsControl ItemsSource="{Binding FilteredChannels}">
         <ItemsControl.ItemTemplate>
           <DataTemplate DataType="{x:Type local:ChannelRow}">
             <Grid Height="56">
@@ -77,10 +85,10 @@
     </ScrollViewer>
 
     <!-- Program grid -->
-    <ScrollViewer x:Name="GridScroller" Grid.Row="2" Grid.Column="1"
+    <ScrollViewer x:Name="GridScroller" Grid.Row="3" Grid.Column="1"
                   HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
                   ScrollChanged="OnGridScrollChanged">
-      <ItemsControl ItemsSource="{Binding Channels}">
+      <ItemsControl ItemsSource="{Binding FilteredChannels}">
         <ItemsControl.ItemsPanel>
           <ItemsPanelTemplate><VirtualizingStackPanel/></ItemsPanelTemplate>
         </ItemsControl.ItemsPanel>

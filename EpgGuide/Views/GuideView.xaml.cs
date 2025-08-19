@@ -77,7 +77,7 @@ public partial class GuideView : UserControl
 
     private void MoveHorizontal(int dir)
     {
-        var row = VM.Channels.FirstOrDefault(c => c.TvgId == Current!.ChannelTvgId);
+        var row = VM.FilteredChannels.FirstOrDefault(c => c.TvgId == Current!.ChannelTvgId);
         if (row is null) return;
         var i = row.Programs.IndexOf(Current!);
         var target = dir < 0 ? (i > 0 ? row.Programs[i - 1] : row.Programs.FirstOrDefault())
@@ -87,11 +87,11 @@ public partial class GuideView : UserControl
 
     private void MoveVertical(int dir)
     {
-        var ci = VM.Channels.ToList().FindIndex(c => c.TvgId == Current!.ChannelTvgId);
-        var ni = ci + dir; if (ni < 0 || ni >= VM.Channels.Count) return;
+        var ci = VM.FilteredChannels.ToList().FindIndex(c => c.TvgId == Current!.ChannelTvgId);
+        var ni = ci + dir; if (ni < 0 || ni >= VM.FilteredChannels.Count) return;
         var pivot = Current!.StartUtc + TimeSpan.FromSeconds(Math.Max(1, Current!.Duration.TotalSeconds / 2));
-        var neighbor = VM.Channels[ni].Programs.FirstOrDefault(p => p.StartUtc < pivot && p.EndUtc > pivot)
-                    ?? VM.Channels[ni].Programs.OrderBy(p => Math.Abs((p.StartUtc - pivot).Ticks)).FirstOrDefault();
+        var neighbor = VM.FilteredChannels[ni].Programs.FirstOrDefault(p => p.StartUtc < pivot && p.EndUtc > pivot)
+                    ?? VM.FilteredChannels[ni].Programs.OrderBy(p => Math.Abs((p.StartUtc - pivot).Ticks)).FirstOrDefault();
         if (neighbor != null) VM.SelectedProgram = neighbor;
     }
 }

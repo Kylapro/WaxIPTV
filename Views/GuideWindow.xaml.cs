@@ -22,6 +22,7 @@ namespace WaxIPTV.Views
                     TvgId = c.Id,
                     Number = (i + 1).ToString(),
                     Name = c.Name,
+                    Group = c.Group,
                     LogoPath = c.Logo
                 }).ToArray(),
                 Programs = programmes.SelectMany(kv => kv.Value.Select(p => new ProgramBlock
