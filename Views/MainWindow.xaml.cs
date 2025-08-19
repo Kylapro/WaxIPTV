@@ -1192,9 +1192,7 @@ namespace WaxIPTV.Views
         /// <summary>
         /// Handler for the EPG Guide menu item.  Opens a new guide window
         /// displaying the programme guide for all channels.  Passes the
-        /// current channels and programmes to the guide and subscribes
-        /// to its ChannelSelected event so that clicking a programme
-        /// triggers playback via PlayChannelAsync.
+        /// current channels and programmes to the guide.
         /// </summary>
         private void GuideMenu_Click(object sender, RoutedEventArgs e)
         {
@@ -1204,11 +1202,9 @@ namespace WaxIPTV.Views
                 return;
             }
 
-            var guide = new GuideWindow(_channels, _programmes);
-            guide.Owner = this;
-            guide.ChannelSelected += async (_, ch) =>
+            var guide = new GuideWindow(_channels, _programmes)
             {
-                await PlayChannelAsync(ch);
+                Owner = this
             };
             guide.Show();
         }
