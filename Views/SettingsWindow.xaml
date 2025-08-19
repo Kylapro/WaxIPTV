@@ -66,6 +66,7 @@
                         <RowDefinition Height="Auto"/> <!-- vlc path -->
                         <RowDefinition Height="Auto"/> <!-- playlist -->
                         <RowDefinition Height="Auto"/> <!-- EPG -->
+                        <RowDefinition Height="Auto"/> <!-- EPG refresh interval -->
                         <RowDefinition Height="Auto"/> <!-- EPG actions -->
                         <RowDefinition Height="*"/>  <!-- spacer row -->
                     </Grid.RowDefinitions>
@@ -142,11 +143,25 @@
                             Content="Browse…"
                             Command="{Binding BrowseEpgCommand}"/>
 
+                    <!-- EPG refresh interval -->
+                    <TextBlock Text="EPG refresh (hours)"
+                               Grid.Row="5" Grid.Column="0"
+                               Margin="0,0,8,8"
+                               VerticalAlignment="Center"/>
+                    <TextBox Grid.Row="5" Grid.Column="1"
+                             Margin="0,0,8,8"
+                             Width="60"
+                             Text="{Binding EpgRefreshHours, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+
                     <!-- EPG management buttons -->
-                    <StackPanel Grid.Row="5" Grid.ColumnSpan="3" Orientation="Horizontal" Margin="0,6,0,0">
+                    <StackPanel Grid.Row="6" Grid.ColumnSpan="3" Orientation="Horizontal" Margin="0,6,0,0">
                         <Button Content="Download EPG"
                                 ToolTip="Download and cache the EPG file locally"
                                 Command="{Binding DownloadEpgCommand}"/>
+                        <Button Content="Refresh EPG"
+                                Margin="6,0,0,0"
+                                ToolTip="Reload the EPG now"
+                                Command="{Binding RefreshEpgCommand}"/>
                         <!-- Refresh only the playlist without reloading EPG -->
                         <Button Content="Refresh playlist"
                                 Margin="6,0,0,0"
@@ -154,7 +169,7 @@
                                 Command="{Binding RefreshPlaylistCommand}"/>
                     </StackPanel>
                     <!-- Spacer row for expansion and EPG download progress -->
-                    <StackPanel Grid.Row="6" Grid.ColumnSpan="3">
+                    <StackPanel Grid.Row="7" Grid.ColumnSpan="3">
                         <!-- Progress bar showing EPG download status.  It becomes
                              visible while the download is running and hides
                              automatically when complete.  The value is
