@@ -19,20 +19,21 @@
         the currently active external player.
     -->
     <DockPanel>
-        <!-- Top menu bar with search -->
+        <!-- Top bar with search and shortcut icons -->
         <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4">
-            <Menu DockPanel.Dock="Left">
-                <MenuItem Header="_File">
-                    <MenuItem Header="Settings..." Click="SettingsMenu_Click" InputGestureText="Ctrl+,"/>
-                    <MenuItem Header="EPG Guide" Click="GuideMenu_Click"/>
-                    <MenuItem Header="Refresh (Playlist + EPG)" Click="RefreshMenu_Click"/>
-                    <!-- Reloads only the EPG for the current playlist ignoring the refresh interval.
-                         Useful for forcing a re-download and remap without reloading the playlist. -->
-                    <MenuItem Header="Reload EPG (force)" Click="ReloadEpgForce_Click"/>
-                    <Separator/>
-                    <MenuItem Header="Exit" Click="ExitMenu_Click"/>
-                </MenuItem>
-            </Menu>
+            <!-- Shortcut buttons on the left -->
+            <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Margin="0,0,8,0">
+                <!-- EPG Guide button -->
+                <Button Width="32" Height="32" Margin="0,0,4,0" ToolTip="EPG Guide"
+                        Click="GuideMenu_Click" Style="{DynamicResource AccentButton}">
+                    <TextBlock FontFamily="Segoe MDL2 Assets" FontSize="16" Text="&#xE8A7;"/>
+                </Button>
+                <!-- Settings button -->
+                <Button Width="32" Height="32" ToolTip="Settings"
+                        Click="SettingsMenu_Click" Style="{DynamicResource AccentButton}">
+                    <TextBlock FontFamily="Segoe MDL2 Assets" FontSize="16" Text="&#xE713;"/>
+                </Button>
+            </StackPanel>
             <Button Content="Clear"
                     DockPanel.Dock="Right"
                     Margin="8,0,8,0"
