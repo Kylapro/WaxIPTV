@@ -137,13 +137,13 @@ namespace WaxIPTV.Views
         }
 
         /// <summary>
-        /// Reloads channels and EPG data from the current settings.  This
+        /// Reloads channels and optionally EPG data from the current settings.  This
         /// method can be invoked after the user saves changes in the
         /// settings dialog.  It clears the existing collections and
         /// repopulates them from the latest configuration.  Because it
         /// performs file I/O, it is implemented asynchronously.
         /// </summary>
-        public async System.Threading.Tasks.Task LoadFromSettingsAsync()
+        public async System.Threading.Tasks.Task LoadFromSettingsAsync(bool loadEpg = true)
         {
             AppLog.Logger.Information("Loading configuration and data");
             // Cancel any pending EPG refresh loop before reloading
@@ -173,9 +173,10 @@ namespace WaxIPTV.Views
             bool hasPlayer = _player != null;
             PlayButton.IsEnabled = PauseButton.IsEnabled = StopButton.IsEnabled = hasPlayer;
 
-            // Remember the current playlist and EPG keys so that future calls can detect changes.
+            // Remember the current playlist key and, if reloading the EPG, the EPG key as well
             _lastPlaylistKey = KeyFor(settings.PlaylistUrl);
-            _lastEpgKey = KeyFor(settings.XmltvUrl);
+            if (loadEpg)
+                _lastEpgKey = KeyFor(settings.XmltvUrl);
 
             // Asynchronously load channels
             await LoadChannelsAsync(settings.PlaylistUrl);
@@ -188,12 +189,15 @@ namespace WaxIPTV.Views
             // selected group (initially "All").
             PopulateGroupFilterAndApply();
 
-            // Load the EPG with force so that the new playlist and EPG are fully mapped.  This
-            // initial load should bypass any refresh window and always parse and map the
-            // programmes.  Subsequent reloads will be controlled by the EPG refresh loop or
-            // user actions.
-            await LoadEpgAsync(settings.XmltvUrl, settings.EpgRefreshHours, force: true);
-            AppLog.Logger.Information("EPG loaded with {ProgrammeCount} programmes", _programmes.Sum(kv => kv.Value.Count));
+            if (loadEpg)
+            {
+                // Load the EPG with force so that the new playlist and EPG are fully mapped.  This
+                // initial load should bypass any refresh window and always parse and map the
+                // programmes.  Subsequent reloads will be controlled by the EPG refresh loop or
+                // user actions.
+                await LoadEpgAsync(settings.XmltvUrl, settings.EpgRefreshHours, force: true);
+                AppLog.Logger.Information("EPG loaded with {ProgrammeCount} programmes", _programmes.Sum(kv => kv.Value.Count));
+            }
 
             // Update the UI for the first selection if any
             if (_channels.Count > 0)
@@ -1170,15 +1174,18 @@ namespace WaxIPTV.Views
 
         /// <summary>
         /// Handler for the Settings menu item.  Displays the settings
-        /// dialog; if the user saves changes, reloads the channels and EPG.
+        /// dialog; if the user saves changes, reloads the channels but
+        /// leaves the existing EPG data untouched.  The EPG will refresh
+        /// on its normal interval or when the user manually triggers a
+        /// refresh.
         /// </summary>
         private void SettingsMenu_Click(object sender, RoutedEventArgs e)
         {
             var dlg = new SettingsWindow(_settingsService, _settingsService.Settings);
             if (dlg.ShowDialog() == true)
             {
-                // After saving settings, reload channels and EPG
-                _ = LoadFromSettingsAsync();
+                // After saving settings, reload channels without reloading the EPG
+                _ = LoadFromSettingsAsync(loadEpg: false);
             }
         }
 
