@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Collections.Generic;
 
 namespace WaxIPTV.Services
 {
@@ -12,9 +13,9 @@ namespace WaxIPTV.Services
     public interface IPlayerControl : IAsyncDisposable
     {
         /// <summary>
-        /// Launches the player with the given stream URL and optional window title.
+        /// Launches the player with the given stream URL, optional window title and HTTP headers.
         /// </summary>
-        Task StartAsync(string url, string? title = null, CancellationToken ct = default);
+        Task StartAsync(string url, string? title = null, Dictionary<string, string>? headers = null, CancellationToken ct = default);
 
         /// <summary>
         /// Pauses or resumes playback.

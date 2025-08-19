@@ -5,6 +5,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Collections.Generic;
 using WaxIPTV.Services.Logging;
 
 namespace WaxIPTV.Services
@@ -33,7 +34,7 @@ namespace WaxIPTV.Services
         }
 
         /// <inheritdoc />
-        public async Task StartAsync(string url, string? title = null, CancellationToken ct = default)
+        public async Task StartAsync(string url, string? title = null, Dictionary<string, string>? headers = null, CancellationToken ct = default)
         {
             var psi = new ProcessStartInfo
             {
@@ -43,6 +44,21 @@ namespace WaxIPTV.Services
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
+            if (headers != null)
+            {
+                foreach (var kv in headers)
+                {
+                    var opt = kv.Key.ToLowerInvariant() switch
+                    {
+                        "user-agent" => "--http-user-agent",
+                        "referer" => "--http-referrer",
+                        "cookie" => "--http-cookie",
+                        _ => null
+                    };
+                    if (opt != null)
+                        psi.Arguments += " " + opt + "=" + Quote(kv.Value);
+                }
+            }
             AppLog.Logger.Information("Starting VLC process {Path}", AppLog.Safe(_vlcPath));
             _proc = Process.Start(psi) ?? throw new Exception("Failed to start VLC");
             // Attempt to connect to the RC socket.  VLC may take a moment to open it.

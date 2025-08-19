@@ -410,9 +410,9 @@ namespace WaxIPTV.Views
                 // Provide placeholders when no channels loaded
                 channels = new List<Channel>
                 {
-                    new Channel("ch1", "Channel 1", null, null, "", null, null),
-                    new Channel("ch2", "Channel 2", null, null, "", null, null),
-                    new Channel("ch3", "Channel 3", null, null, "", null, null)
+                    new Channel("ch1", "Channel 1", null, null, "", null, null, null),
+                    new Channel("ch2", "Channel 2", null, null, "", null, null, null),
+                    new Channel("ch3", "Channel 3", null, null, "", null, null, null)
                 };
             }
             _channels = channels;
@@ -935,12 +935,12 @@ namespace WaxIPTV.Views
                 if (_player is MpvController mpv && mpv.IsRunning && _playerStarted)
                 {
                     AppLog.Logger.Information("Using existing mpv instance");
-                    await mpv.LoadAsync(ch.StreamUrl);
+                    await mpv.LoadAsync(ch.StreamUrl, ch.Headers);
                 }
                 else
                 {
                     AppLog.Logger.Information("Starting player process");
-                    await _player.StartAsync(ch.StreamUrl, ch.Name);
+                    await _player.StartAsync(ch.StreamUrl, ch.Name, ch.Headers);
                     _playerStarted = true;
                 }
             }
