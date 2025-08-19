@@ -358,6 +358,57 @@ namespace WaxIPTV.Views
         }
 
         /// <summary>
+        /// Reloads only the EPG from the current settings without reloading the playlist.
+        /// Used when the user presses the "Refresh EPG" button in the settings dialog.
+        /// After reloading, the Now/Next panel is updated and the background refresh loop
+        /// is restarted with the current refresh interval.
+        /// </summary>
+        public async System.Threading.Tasks.Task RefreshEpgFromSettingsAsync()
+        {
+            // Ensure latest settings are loaded
+            _settingsService.Load();
+            var s = _settingsService.Settings;
+
+            // Update the last EPG key so changes to the EPG source trigger a reload
+            _lastEpgKey = KeyFor(s.XmltvUrl);
+
+            // Cancel any existing background refresh loop
+            _epgRefreshCts?.Cancel();
+
+            await LoadEpgAsync(s.XmltvUrl, s.EpgRefreshHours, force: true);
+            AppLog.Logger.Information("Refreshed EPG with {Programmes} programmes", _programmes.Sum(kv => kv.Value.Count));
+            UpdateNowNextForSelected();
+
+            // Restart the background EPG refresh loop
+            _epgRefreshCts = new System.Threading.CancellationTokenSource();
+            var token = _epgRefreshCts.Token;
+            _ = System.Threading.Tasks.Task.Run(async () =>
+            {
+                while (!token.IsCancellationRequested)
+                {
+                    try
+                    {
+                        await System.Threading.Tasks.Task.Delay(TimeSpan.FromHours(s.EpgRefreshHours), token);
+                        if (token.IsCancellationRequested) break;
+                        await Application.Current.Dispatcher.InvokeAsync(async () =>
+                        {
+                            await LoadEpgAsync(s.XmltvUrl, s.EpgRefreshHours);
+                            UpdateNowNextForSelected();
+                        });
+                    }
+                    catch (System.OperationCanceledException)
+                    {
+                        break;
+                    }
+                    catch
+                    {
+                        // ignore other errors and continue loop
+                    }
+                }
+            }, token);
+        }
+
+        /// <summary>
         /// Loads the M3U playlist from a file path or URL.  For local
         /// files, File.ReadAllText is used.  For HTTP/HTTPS sources,
         /// HttpClient downloads the content.  On any failure, the
@@ -1138,29 +1189,12 @@ namespace WaxIPTV.Views
         /// to its ChannelSelected event so that clicking a programme
         /// triggers playback via PlayChannelAsync.
         /// </summary>
-        private async void GuideMenu_Click(object sender, RoutedEventArgs e)
+        private void GuideMenu_Click(object sender, RoutedEventArgs e)
         {
             if (_channels == null || _channels.Count == 0)
             {
                 MessageBox.Show("No channels are loaded yet.", "EPG Guide", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
-            }
-            // Before opening the guide, ensure we only use cached EPG data.  We
-            // load from the cache file directly by passing a null source to
-            // LoadEpgAsync.  The force flag bypasses the refresh interval and
-            // TTL checks so that the cache is always read.  If the cache
-            // does not exist or cannot be parsed, the programmes dictionary
-            // will be empty, resulting in an empty guide until the user
-            // downloads a new EPG via the settings dialog.
-            try
-            {
-                _settingsService.Load();
-                var s = _settingsService.Settings;
-                await LoadEpgAsync(null, s.EpgRefreshHours, force: true);
-            }
-            catch
-            {
-                // Ignore errors reading cache; the guide will simply show no programmes
             }
 
             var guide = new GuideWindow(_channels, _programmes);
