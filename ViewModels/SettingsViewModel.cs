@@ -42,6 +42,8 @@ namespace WaxIPTV.ViewModels
         private string? playlistUrl;
         [ObservableProperty]
         private string? xmltvUrl;
+        [ObservableProperty]
+        private int epgRefreshHours = 12;
 
         // ----- Friendly Theme fields -----
         [ObservableProperty]
@@ -98,6 +100,7 @@ namespace WaxIPTV.ViewModels
             vlcPath     = settings.VlcPath;
             playlistUrl = settings.PlaylistUrl;
             xmltvUrl    = settings.XmltvUrl;
+            epgRefreshHours = settings.EpgRefreshHours;
 
             var themeFile = Path.Combine(AppContext.BaseDirectory, "theme.json");
             if (File.Exists(themeFile))
@@ -331,6 +334,7 @@ namespace WaxIPTV.ViewModels
             _settings.VlcPath     = vlcPath;
             _settings.PlaylistUrl = playlistUrl;
             _settings.XmltvUrl    = xmltvUrl;
+            _settings.EpgRefreshHours = epgRefreshHours;
 
             // Save settings and theme
             _service.Save(_settings);
@@ -339,12 +343,6 @@ namespace WaxIPTV.ViewModels
 
             // Apply the theme immediately
             ApplyTheme();
-
-            // If the user supplied an EPG source, trigger a download before closing
-            if (!string.IsNullOrWhiteSpace(xmltvUrl))
-            {
-                await DownloadEpg();
-            }
 
             try
             {
@@ -524,21 +522,6 @@ namespace WaxIPTV.ViewModels
         }
 
         /// <summary>
-        /// Forces a refresh of both the playlist and the EPG.  Invoked from
-        /// the settings dialog to allow users to immediately reparse and
-        /// reload their channels and EPG data after making changes.  If
-        /// the main window is not available, the method does nothing.
-        /// </summary>
-        [RelayCommand]
-        private async Task RefreshNow()
-        {
-            if (Application.Current.MainWindow is MainWindow mw)
-            {
-                await mw.RefreshFromSettingsAsync();
-            }
-        }
-
-        /// <summary>
         /// Forces a refresh of only the playlist using the current settings.  This
         /// command reloads the channel list without touching the cached EPG or
         /// triggering a new EPG download.  It is used when the user clicks
@@ -551,6 +534,20 @@ namespace WaxIPTV.ViewModels
             if (Application.Current.MainWindow is MainWindow mw)
             {
                 await mw.RefreshPlaylistFromSettingsAsync();
+            }
+        }
+
+        /// <summary>
+        /// Forces a refresh of only the EPG using the current settings.  This reloads the guide
+        /// data without reloading the playlist.  If the main window is not available, the method
+        /// does nothing.
+        /// </summary>
+        [RelayCommand]
+        private async Task RefreshEpg()
+        {
+            if (Application.Current.MainWindow is MainWindow mw)
+            {
+                await mw.RefreshEpgFromSettingsAsync();
             }
         }
     }

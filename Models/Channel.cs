@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace WaxIPTV.Models
 {
@@ -13,6 +14,7 @@ namespace WaxIPTV.Models
         string? Logo,
         string StreamUrl,
         string? TvgId = null,
-        string? TvgName = null
+        string? TvgName = null,
+        Dictionary<string, string>? Headers = null
     );
 }

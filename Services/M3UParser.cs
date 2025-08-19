@@ -33,6 +33,7 @@ namespace WaxIPTV.Services
             using var scope = AppLog.BeginScope("M3UParse");
             var channels = new List<Channel>();
             Dictionary<string, string>? meta = null;
+            Dictionary<string, string>? headers = null;
             string? title = null;
 
             foreach (var raw in m3u.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None))
@@ -42,12 +43,47 @@ namespace WaxIPTV.Services
                 {
                     // Start a new metadata block
                     meta = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    headers = null;
                     foreach (Match m in Attr.Matches(line))
                         meta[m.Groups[1].Value] = m.Groups[2].Value;
 
                     // Extract the display name following the comma
                     var comma = line.IndexOf(',');
                     title = comma >= 0 ? line[(comma + 1)..].Trim() : "Channel";
+                }
+                else if (meta is not null && line.StartsWith("#EXTGRP", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Some playlists supply group name in a dedicated line
+                    var grp = line[8..].Trim();
+                    if (!string.IsNullOrWhiteSpace(grp))
+                        meta["group-title"] = grp;
+                }
+                else if (meta is not null && line.StartsWith("#EXTLOGO", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Custom logo line
+                    var lg = line[9..].Trim();
+                    if (!string.IsNullOrWhiteSpace(lg))
+                        meta["tvg-logo"] = lg;
+                }
+                else if (meta is not null &&
+                         (line.StartsWith("#EXTVLCOPT:http-", StringComparison.OrdinalIgnoreCase) ||
+                          line.StartsWith("#KODIPROP:http-", StringComparison.OrdinalIgnoreCase)))
+                {
+                    // Special header directives: #EXTVLCOPT:http-user-agent=Foo
+                    var idx = line.IndexOf(':');
+                    var opt = line[(idx + 1)..]; // after '#EXTVLCOPT:' or '#KODIPROP:'
+                    var parts = opt.Split('=', 2);
+                    if (parts.Length == 2)
+                    {
+                        var key = parts[0].Trim();
+                        var value = parts[1].Trim();
+                        const string prefix = "http-";
+                        if (key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                        {
+                            headers ??= new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                            headers[key[prefix.Length..]] = value;
+                        }
+                    }
                 }
                 else if (!string.IsNullOrWhiteSpace(line) && !line.StartsWith("#") && meta is not null)
                 {
@@ -68,10 +104,11 @@ namespace WaxIPTV.Services
                     // Pass the optional tvg-name through to the Channel record.  This
                     // allows downstream EPG mapping to match on tvg-name when tvg-id
                     // is absent or does not correspond to the XMLTV feed.
-                    channels.Add(new Channel(id, name, group, logo, line, tvgId, tvgName));
+                    channels.Add(new Channel(id, name, group, logo, line, tvgId, tvgName, headers));
                     // Reset for the next entry
                     meta = null;
                     title = null;
+                    headers = null;
                 }
             }
             AppLog.Logger.Information("Parsed {Count} channels from playlist", channels.Count);

@@ -4,6 +4,8 @@ using System.IO.Pipes;
 using System.Threading;
 using System.Threading.Tasks;
 using System.IO;
+using System.Collections.Generic;
+using System.Linq;
 using WaxIPTV.Services.Logging;
 
 namespace WaxIPTV.Services
@@ -32,7 +34,7 @@ namespace WaxIPTV.Services
         /// Starts mpv with the specified stream URL and optional window title.  This will
         /// wait for the IPC pipe to become available and set an initial volume of 100%.
         /// </summary>
-        public async Task StartAsync(string url, string? title = null, CancellationToken ct = default)
+        public async Task StartAsync(string url, string? title = null, Dictionary<string, string>? headers = null, CancellationToken ct = default)
         {
             var psi = new ProcessStartInfo
             {
@@ -43,6 +45,13 @@ namespace WaxIPTV.Services
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
+            if (headers != null)
+            {
+                foreach (var kv in headers)
+                {
+                    psi.Arguments += " --http-header-fields=" + Quote($"{kv.Key}: {kv.Value}");
+                }
+            }
             AppLog.Logger.Information("Starting mpv process {Path}", AppLog.Safe(_mpvPath));
             _proc = Process.Start(psi) ?? throw new Exception("Failed to start mpv");
             // Wait for pipe to appear and connect
@@ -108,14 +117,20 @@ namespace WaxIPTV.Services
         /// </summary>
         /// <param name="url">The media URL to load into mpv.</param>
         /// <param name="ct">A cancellation token for the operation.</param>
-        public Task LoadAsync(string url, CancellationToken ct = default)
+        public Task LoadAsync(string url, Dictionary<string, string>? headers = null, CancellationToken ct = default)
         {
             if (!IsRunning)
             {
                 return Task.CompletedTask;
             }
             AppLog.Logger.Information("mpv load {Url}", AppLog.Safe(url));
-            return SendAsync(new { command = new object[] { "loadfile", url, "replace" } }, ct);
+            var cmd = new List<object> { "loadfile", url, "replace" };
+            if (headers != null && headers.Count > 0)
+            {
+                var headerLines = string.Join("\\n", headers.Select(kv => $"{kv.Key}: {kv.Value}"));
+                cmd.Add($"http-header-fields={headerLines}");
+            }
+            return SendAsync(new { command = cmd.ToArray() }, ct);
         }
 
         /// <summary>

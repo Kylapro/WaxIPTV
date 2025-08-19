@@ -17,10 +17,12 @@ handling.
   named pipe; VLC’s RC interface over TCP).  The choice of player and
   executable paths are defined in `settings.json`.
 - **Playlist and EPG:** M3U (including M3U8) playlist files are parsed
-  into a list of channels.  XMLTV feeds are loaded on a schedule, mapped
-  to channels using `tvg-id` or normalised names, and held in memory for
-  a few days.  A helper method computes the current and next programme for
-  a channel.
+  into a list of channels.  The parser understands custom logo lines
+  (`#EXTLOGO`) and special HTTP header directives (`#EXTVLCOPT:http-`,
+  `#KODIPROP:http-`) and preserves them for playback.  XMLTV feeds are
+  loaded on a schedule, mapped to channels using `tvg-id` or normalised
+  names, and held in memory for a few days.  A helper method computes the
+  current and next programme for a channel.
 - **Theming and layout:** A simple theming system reads colour, typography
   and shape tokens from `theme.json` and applies them at runtime via a
   helper (`ThemeLoader`).  A separate `layout.json` file hints which
