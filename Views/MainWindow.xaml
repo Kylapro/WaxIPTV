@@ -19,19 +19,35 @@
         the currently active external player.
     -->
     <DockPanel>
-        <!-- Top menu bar -->
-        <Menu DockPanel.Dock="Top">
-            <MenuItem Header="_File">
-                <MenuItem Header="Settings..." Click="SettingsMenu_Click" InputGestureText="Ctrl+,"/>
-                <MenuItem Header="EPG Guide" Click="GuideMenu_Click"/>
-                <MenuItem Header="Refresh (Playlist + EPG)" Click="RefreshMenu_Click"/>
-                <!-- Reloads only the EPG for the current playlist ignoring the refresh interval.  
-                     Useful for forcing a re-download and remap without reloading the playlist. -->
-                <MenuItem Header="Reload EPG (force)" Click="ReloadEpgForce_Click"/>
-                <Separator/>
-                <MenuItem Header="Exit" Click="ExitMenu_Click"/>
-            </MenuItem>
-        </Menu>
+        <!-- Top menu bar with search -->
+        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4">
+            <Menu DockPanel.Dock="Left">
+                <MenuItem Header="_File">
+                    <MenuItem Header="Settings..." Click="SettingsMenu_Click" InputGestureText="Ctrl+,"/>
+                    <MenuItem Header="EPG Guide" Click="GuideMenu_Click"/>
+                    <MenuItem Header="Refresh (Playlist + EPG)" Click="RefreshMenu_Click"/>
+                    <!-- Reloads only the EPG for the current playlist ignoring the refresh interval.
+                         Useful for forcing a re-download and remap without reloading the playlist. -->
+                    <MenuItem Header="Reload EPG (force)" Click="ReloadEpgForce_Click"/>
+                    <Separator/>
+                    <MenuItem Header="Exit" Click="ExitMenu_Click"/>
+                </MenuItem>
+            </Menu>
+            <Button Content="Clear"
+                    DockPanel.Dock="Right"
+                    Margin="8,0,8,0"
+                    Click="ClearSearch_Click"
+                    Style="{DynamicResource AccentButton}"/>
+            <TextBox x:Name="SearchBox"
+                     Margin="8,0"
+                     VerticalAlignment="Center"
+                     TextChanged="SearchBox_TextChanged"
+                     Background="{DynamicResource SurfaceBrush}"
+                     Foreground="{DynamicResource TextBrush}"
+                     BorderBrush="{DynamicResource DividerBrush}"
+                     BorderThickness="1"
+                     MinWidth="300"/>
+        </DockPanel>
 
         <!-- EPG loading indicator.  This panel shows a brief message and
              an indeterminate progress bar while the EPG data is being
@@ -68,10 +84,7 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
-                <!-- Filter bar: provides a group selector and search box.  The
-                     search box occupies remaining space thanks to DockPanel.
-                     Controls use SurfaceBrush and DividerBrush to improve
-                     contrast against the dark background. -->
+                <!-- Filter bar: provides a group selector and EPG counters. -->
                 <DockPanel Margin="0,0,0,8" Grid.Row="0">
                     <!-- Group filter on the left -->
                     <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" Margin="0,0,8,0">
@@ -83,31 +96,15 @@
                                   BorderBrush="{DynamicResource DividerBrush}"
                                   BorderThickness="1"/>
                     </StackPanel>
-                    <!-- Clear button on the right -->
-                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" Margin="8,0,0,0">
-                        <Button Content="Clear"
-                                Click="ClearSearch_Click"
-                                Style="{DynamicResource AccentButton}"/>
-                    </StackPanel>
-                <!-- EPG counters: displays how many channels and programmes were loaded and mapped.  
-                     Placed on the right side of the filter bar.  Hidden until EPG is loaded. -->
-                <TextBlock x:Name="EpgCountersText"
-                           DockPanel.Dock="Right"
-                           Margin="8,0,0,0"
-                           VerticalAlignment="Center"
-                           Foreground="{DynamicResource TextBrush}"
-                           Text="EPG: (waiting…)"
-                           ToolTip="Shows counts after EPG loads"/>
-                    <!-- Search box fills the remaining space -->
-                    <TextBox x:Name="SearchBox"
-                             Margin="0,0,8,0"
-                             VerticalAlignment="Center"
-                             HorizontalAlignment="Stretch"
-                             TextChanged="SearchBox_TextChanged"
-                             Background="{DynamicResource SurfaceBrush}"
-                             Foreground="{DynamicResource TextBrush}"
-                             BorderBrush="{DynamicResource DividerBrush}"
-                             BorderThickness="1"/>
+                    <!-- EPG counters: displays how many channels and programmes were loaded and mapped.
+                         Placed on the right side of the filter bar.  Hidden until EPG is loaded. -->
+                    <TextBlock x:Name="EpgCountersText"
+                               DockPanel.Dock="Right"
+                               Margin="8,0,0,0"
+                               VerticalAlignment="Center"
+                               Foreground="{DynamicResource TextBrush}"
+                               Text="EPG: (waiting…)"
+                               ToolTip="Shows counts after EPG loads"/>
                 </DockPanel>
                 <!-- Channel list -->
                 <views:ChannelListView x:Name="ChannelList" Grid.Row="1"

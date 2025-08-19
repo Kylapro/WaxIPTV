@@ -471,6 +471,7 @@ namespace WaxIPTV.Views
             }
 
             var programmesDict = new Dictionary<string, List<Programme>>();
+            _programmes = programmesDict;
             var cachePath = GetEpgCachePath();
             string? xml = null;
 
@@ -619,6 +620,8 @@ namespace WaxIPTV.Views
                             {
                                 if (MainEpgLoadingLabel != null)
                                     MainEpgLoadingLabel.Text = $"Loading EPG... ({count} programmes)";
+                                // Update now/next display as data becomes available
+                        UpdateNowNextForSelected();
                             });
                         }
                         catch
@@ -626,7 +629,7 @@ namespace WaxIPTV.Views
                             // ignore UI update errors
                         }
                     });
-                    programmesDict = EpgMapper.MapProgrammesInBatches(programmeStream, _channels, channelNames, 200, overrides, progress);
+                    programmesDict = EpgMapper.MapProgrammesInBatches(programmeStream, _channels, channelNames, 200, overrides, progress, programmesDict);
                     AppLog.Logger.Information("Mapping {ProgCount} programmes", totalProgrammes);
                     // Trim programmes beyond 7 days to limit memory usage
                     var cutoff = DateTimeOffset.UtcNow.AddDays(7);
