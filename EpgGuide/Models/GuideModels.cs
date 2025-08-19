@@ -21,6 +21,7 @@ public sealed class ChannelRow
     public string TvgId { get; init; } = "";
     public string Number { get; init; } = "";
     public string Name { get; init; } = "";
+    public string? Group { get; init; }
     public string? LogoPath { get; init; }
     public ObservableCollection<ProgramBlock> Programs { get; } = new();
 }
@@ -30,6 +31,7 @@ public sealed class ChannelMeta
     public required string TvgId { get; init; }
     public required string Number { get; init; }
     public required string Name { get; init; }
+    public string? Group { get; init; }
     public string? LogoPath { get; init; }
 }
 
