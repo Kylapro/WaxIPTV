@@ -4,7 +4,9 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 using System.Windows.Input;
+using WaxIPTV.Models;
 
 namespace WaxIPTV.EpgGuide;
 
@@ -57,6 +59,60 @@ public sealed class GuideViewModel : INotifyPropertyChanged
         PageLaterCommand   = new Relay(() => VisibleStartUtc = VisibleStartUtc.AddHours(+1));
         DayEarlierCommand  = new Relay(() => VisibleStartUtc = VisibleStartUtc.AddDays(-1));
         DayLaterCommand    = new Relay(() => VisibleStartUtc = VisibleStartUtc.AddDays(+1));
+    }
+
+    public async Task LoadIncrementalAsync(IList<Channel> channels, Dictionary<string, List<Programme>> programmes)
+    {
+        Channels.Clear();
+        FilteredChannels.Clear();
+
+        Groups.Clear();
+        Groups.Add("All");
+
+        int i = 0;
+        foreach (var ch in channels)
+        {
+            var row = new ChannelRow
+            {
+                TvgId = ch.Id,
+                Number = (i + 1).ToString(),
+                Name = ch.Name,
+                Group = ch.Group,
+                LogoPath = ch.Logo
+            };
+
+            if (programmes.TryGetValue(ch.Id, out var list))
+            {
+                foreach (var p in list)
+                {
+                    row.Programs.Add(new ProgramBlock
+                    {
+                        ChannelTvgId = ch.Id,
+                        Title = p.Title,
+                        Synopsis = p.Desc,
+                        StartUtc = p.StartUtc.UtcDateTime,
+                        EndUtc = p.EndUtc.UtcDateTime,
+                        IsLive = false,
+                        IsNew = false
+                    });
+                }
+            }
+
+            Channels.Add(row);
+            FilteredChannels.Add(row);
+
+            if (!string.IsNullOrWhiteSpace(ch.Group) && !Groups.Any(g => string.Equals(g, ch.Group, StringComparison.OrdinalIgnoreCase)))
+                Groups.Add(ch.Group!);
+
+            i++;
+            if (i % 20 == 0)
+                await Task.Yield();
+        }
+
+        SelectedGroup = "All";
+        ApplyFilters();
+        var now = DateTime.UtcNow;
+        VisibleStartUtc = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute < 30 ? 0 : 30, 0, DateTimeKind.Utc).AddMinutes(-30);
     }
 
     public void LoadFrom(EpgSnapshot snapshot)
