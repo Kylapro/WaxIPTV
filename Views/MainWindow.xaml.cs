@@ -29,6 +29,7 @@ namespace WaxIPTV.Views
         private List<Channel> _channels = new();
         private Dictionary<string, List<Programme>> _programmes = new();
         private EpgSnapshot? _epgSnapshot;
+        private GuideWindow? _guideWindow;
         private DateTimeOffset _epgLoadedAt = DateTimeOffset.MinValue;
         // Timer used to refresh the Now/Next display on a fixed schedule.
         private System.Windows.Threading.DispatcherTimer? _nowNextTimer;
@@ -843,6 +844,11 @@ namespace WaxIPTV.Views
                 AppLog.Logger.Warning(ex, "Failed to update EPG UI after load");
                 // ignore UI update errors
             }
+
+            if (_guideWindow != null)
+            {
+                await _guideWindow.LoadData(_epgSnapshot, _channels, _programmes);
+            }
         }
 
         private static EpgSnapshot BuildEpgSnapshot(IList<Channel> channels, Dictionary<string, List<Programme>> programmes)
@@ -1241,17 +1247,19 @@ namespace WaxIPTV.Views
         /// </summary>
         private void GuideMenu_Click(object sender, RoutedEventArgs e)
         {
-            if (_epgSnapshot == null)
+            if (_guideWindow == null)
             {
-                MessageBox.Show("EPG data is not loaded yet.", "EPG Guide", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
+                _guideWindow = new GuideWindow(_epgSnapshot, _channels, _programmes)
+                {
+                    Owner = this
+                };
+                _guideWindow.Closed += (_, __) => _guideWindow = null;
+                _guideWindow.Show();
             }
-
-            var guide = new GuideWindow(_epgSnapshot)
+            else
             {
-                Owner = this
-            };
-            guide.Show();
+                _guideWindow.Activate();
+            }
         }
 
         /// <summary>
