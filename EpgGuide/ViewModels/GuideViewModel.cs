@@ -34,8 +34,7 @@ public sealed class GuideViewModel : INotifyPropertyChanged
     private DateTime _visibleStartUtc = DateTime.UtcNow.AddMinutes(-15);
     public DateTime VisibleStartUtc { get => _visibleStartUtc; set { _visibleStartUtc = value; OnPropertyChanged(); OnPropertyChanged(nameof(VisibleEndUtc)); OnPropertyChanged(nameof(TimelinePixelWidth)); } }
 
-    private TimeSpan _visibleDuration = TimeSpan.FromHours(3);
-    public TimeSpan VisibleDuration { get => _visibleDuration; set { _visibleDuration = value; OnPropertyChanged(); OnPropertyChanged(nameof(VisibleEndUtc)); OnPropertyChanged(nameof(TimelinePixelWidth)); } }
+    public TimeSpan VisibleDuration { get; } = TimeSpan.FromHours(12);
 
     public DateTime VisibleEndUtc => VisibleStartUtc + VisibleDuration;
 
@@ -55,8 +54,8 @@ public sealed class GuideViewModel : INotifyPropertyChanged
     public GuideViewModel()
     {
         JumpNowCommand     = new Relay(() => VisibleStartUtc = DateTime.UtcNow.AddMinutes(-15));
-        PageEarlierCommand = new Relay(() => VisibleStartUtc = VisibleStartUtc.AddHours(-1));
-        PageLaterCommand   = new Relay(() => VisibleStartUtc = VisibleStartUtc.AddHours(+1));
+        PageEarlierCommand = new Relay(() => VisibleStartUtc = VisibleStartUtc.Add(-VisibleDuration));
+        PageLaterCommand   = new Relay(() => VisibleStartUtc = VisibleStartUtc.Add(VisibleDuration));
         DayEarlierCommand  = new Relay(() => VisibleStartUtc = VisibleStartUtc.AddDays(-1));
         DayLaterCommand    = new Relay(() => VisibleStartUtc = VisibleStartUtc.AddDays(+1));
     }
