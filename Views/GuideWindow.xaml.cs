@@ -1,8 +1,6 @@
-using System.Collections.Generic;
-using System.Windows;
 using System.Threading.Tasks;
+using System.Windows;
 using WaxIPTV.EpgGuide;
-using WaxIPTV.Models;
 
 namespace WaxIPTV.Views
 {
@@ -11,13 +9,13 @@ namespace WaxIPTV.Views
     /// </summary>
     public partial class GuideWindow : Window
     {
-        public GuideWindow(List<Channel> channels, Dictionary<string, List<Programme>> programmes)
+        public GuideWindow(EpgSnapshot snapshot)
         {
             InitializeComponent();
 
             Loaded += async (_, __) =>
             {
-                await ((GuideViewModel)Guide.DataContext).LoadIncrementalAsync(channels, programmes);
+                await ((GuideViewModel)Guide.DataContext).LoadFrom(snapshot);
             };
         }
     }

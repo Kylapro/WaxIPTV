@@ -8,6 +8,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Threading.Tasks;
 using System.Text;
+using WaxIPTV.EpgGuide;
 using WaxIPTV.Models;
 using WaxIPTV.Services;
 using WaxIPTV.Services.Logging;
@@ -27,6 +28,7 @@ namespace WaxIPTV.Views
         private IPlayerControl? _player;
         private List<Channel> _channels = new();
         private Dictionary<string, List<Programme>> _programmes = new();
+        private EpgSnapshot? _epgSnapshot;
         private DateTimeOffset _epgLoadedAt = DateTimeOffset.MinValue;
         // Timer used to refresh the Now/Next display on a fixed schedule.
         private System.Windows.Threading.DispatcherTimer? _nowNextTimer;
@@ -818,6 +820,7 @@ namespace WaxIPTV.Views
             }
 
             _programmes = programmesDict;
+            _epgSnapshot = await Task.Run(() => BuildEpgSnapshot(_channels, _programmes));
             AppLog.Logger.Information("EPG load complete with {Programmes} programmes", programmesDict.Sum(kv => kv.Value.Count));
 
             // Hide the main window EPG loading indicator when loading completes.  Also update
@@ -840,6 +843,48 @@ namespace WaxIPTV.Views
                 AppLog.Logger.Warning(ex, "Failed to update EPG UI after load");
                 // ignore UI update errors
             }
+        }
+
+        private static EpgSnapshot BuildEpgSnapshot(IList<Channel> channels, Dictionary<string, List<Programme>> programmes)
+        {
+            var metas = new ChannelMeta[channels.Count];
+            var progList = new List<ProgramBlock>();
+
+            for (int i = 0; i < channels.Count; i++)
+            {
+                var ch = channels[i];
+                metas[i] = new ChannelMeta
+                {
+                    TvgId = ch.Id,
+                    Number = (i + 1).ToString(),
+                    Name = ch.Name,
+                    Group = ch.Group,
+                    LogoPath = ch.Logo
+                };
+
+                if (programmes.TryGetValue(ch.Id, out var list))
+                {
+                    foreach (var p in list)
+                    {
+                        progList.Add(new ProgramBlock
+                        {
+                            ChannelTvgId = ch.Id,
+                            Title = p.Title,
+                            Synopsis = p.Desc,
+                            StartUtc = p.StartUtc.UtcDateTime,
+                            EndUtc = p.EndUtc.UtcDateTime,
+                            IsLive = false,
+                            IsNew = false
+                        });
+                    }
+                }
+            }
+
+            return new EpgSnapshot
+            {
+                Channels = metas,
+                Programs = progList.ToArray()
+            };
         }
 
         /// <summary>
@@ -1196,13 +1241,13 @@ namespace WaxIPTV.Views
         /// </summary>
         private void GuideMenu_Click(object sender, RoutedEventArgs e)
         {
-            if (_channels == null || _channels.Count == 0)
+            if (_epgSnapshot == null)
             {
-                MessageBox.Show("No channels are loaded yet.", "EPG Guide", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show("EPG data is not loaded yet.", "EPG Guide", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
-            var guide = new GuideWindow(_channels, _programmes)
+            var guide = new GuideWindow(_epgSnapshot)
             {
                 Owner = this
             };
