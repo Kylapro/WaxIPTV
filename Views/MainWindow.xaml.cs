@@ -538,7 +538,11 @@ namespace WaxIPTV.Views
                 {
                     try
                     {
-                        xml = await File.ReadAllTextAsync(cachePath);
+                        // Use XmltvTextLoader so that older gzipped cache files are
+                        // transparently decompressed when read.  This avoids parsing
+                        // errors caused by leftover binary data (e.g. 0x1F "gzip" magic
+                        // bytes) being interpreted as text.
+                        xml = await XmltvTextLoader.LoadAsync(cachePath);
                         AppLog.Logger.Information("Loaded EPG from cache");
                     }
                     catch (Exception ex)
@@ -604,7 +608,9 @@ namespace WaxIPTV.Views
             {
                 try
                 {
-                    xml = await File.ReadAllTextAsync(cachePath);
+                    // Fallback to reading the cache with XmltvTextLoader so any
+                    // gzipped data is handled consistently with direct downloads.
+                    xml = await XmltvTextLoader.LoadAsync(cachePath);
                 }
                 catch (Exception ex)
                 {
