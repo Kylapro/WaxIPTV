@@ -12,6 +12,7 @@ public partial class GuideView : UserControl
 {
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(30) };
     public GuideViewModel VM => (GuideViewModel)DataContext;
+    private bool _syncingScroll;
 
     public GuideView()
     {
@@ -47,10 +48,29 @@ public partial class GuideView : UserControl
 
     private void OnGridScrollChanged(object sender, ScrollChangedEventArgs e)
     {
+        if (_syncingScroll) return;
+        _syncingScroll = true;
         if (e.HorizontalChange != 0)
             TimelineScroller.ScrollToHorizontalOffset(e.HorizontalOffset);
         if (e.VerticalChange != 0)
             ChannelsScroller.ScrollToVerticalOffset(e.VerticalOffset);
+        _syncingScroll = false;
+    }
+
+    private void OnChannelsScrollChanged(object sender, ScrollChangedEventArgs e)
+    {
+        if (_syncingScroll) return;
+        _syncingScroll = true;
+        GridScroller.ScrollToVerticalOffset(e.VerticalOffset);
+        _syncingScroll = false;
+    }
+
+    private void OnTimelineScrollChanged(object sender, ScrollChangedEventArgs e)
+    {
+        if (_syncingScroll) return;
+        _syncingScroll = true;
+        GridScroller.ScrollToHorizontalOffset(e.HorizontalOffset);
+        _syncingScroll = false;
     }
 
     private void OnProgramClicked(object sender, RoutedEventArgs e)
