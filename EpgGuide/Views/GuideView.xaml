@@ -8,14 +8,16 @@
     <local:DurationToWidthConverter x:Key="TimeToW"/>
     <local:VisibleProgramsConverter x:Key="VisiblePrograms"/>
     <Style x:Key="ProgramCell" TargetType="Button">
-      <Setter Property="Padding" Value="8,6"/>
+      <Setter Property="Padding" Value="{DynamicResource SpacingS}"/>
       <Setter Property="BorderThickness" Value="0"/>
       <Setter Property="HorizontalContentAlignment" Value="Left"/>
       <Setter Property="VerticalContentAlignment" Value="Center"/>
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Button">
-            <Border Background="#1F8AA7FF" CornerRadius="6">
+            <Border Background="{DynamicResource AccentSelectionBrush}"
+                    CornerRadius="{DynamicResource ThemeCornerRadius}"
+                    ClipToBounds="True">
               <TextBlock Text="{TemplateBinding Content}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
             </Border>
           </ControlTemplate>
@@ -24,7 +26,7 @@
     </Style>
   </UserControl.Resources>
 
-  <Grid Background="#0D0F14">
+  <Grid Background="{DynamicResource BgBrush}">
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto"/> <!-- Search & filters -->
       <RowDefinition Height="Auto"/> <!-- Info panel -->
@@ -44,7 +46,7 @@
     </StackPanel>
 
     <!-- Info panel -->
-    <Border Grid.Row="1" Grid.ColumnSpan="2" Background="#121720" Padding="12" BorderBrush="#1E2A3A" BorderThickness="0,0,0,1">
+    <Border Grid.Row="1" Grid.ColumnSpan="2" Background="{DynamicResource SurfaceBrush}" Padding="12" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,0,0,1">
       <StackPanel>
         <TextBlock Text="{Binding SelectedProgram.Title}" FontSize="18" FontWeight="Bold"/>
         <TextBlock Text="{Binding SelectedProgram.StartUtc, StringFormat='{}{0:HH:mm} UTC'}" Opacity="0.7"/>
@@ -53,12 +55,12 @@
     </Border>
 
     <!-- Channel header -->
-    <Border Grid.Row="2" Grid.Column="0" Background="#0B1017" BorderBrush="#1E2A3A" BorderThickness="0,0,1,1">
+    <Border Grid.Row="2" Grid.Column="0" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,0,1,1">
       <TextBlock Text="Channel" Padding="10,6" FontWeight="Bold"/>
     </Border>
 
     <!-- Hour strip (header) -->
-    <ScrollViewer x:Name="TimelineScroller" Grid.Row="2" Grid.Column="1" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+    <ScrollViewer x:Name="TimelineScroller" Grid.Row="2" Grid.Column="1" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" ScrollChanged="OnTimelineScrollChanged">
       <ItemsControl x:Name="HourStrip">
         <ItemsControl.ItemsPanel>
           <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
@@ -68,7 +70,7 @@
 
     <!-- Channels column -->
     <ScrollViewer x:Name="ChannelsScroller" Grid.Row="3" Grid.Column="0" VerticalScrollBarVisibility="Auto"
-                  CanContentScroll="True">
+                  CanContentScroll="True" ScrollChanged="OnChannelsScrollChanged">
       <ItemsControl ItemsSource="{Binding FilteredChannels}"
                     VirtualizingStackPanel.IsVirtualizing="True"
                     VirtualizingStackPanel.VirtualizationMode="Recycling">
@@ -103,8 +105,8 @@
         </ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>
           <DataTemplate DataType="{x:Type local:ChannelRow}">
-            <Grid Height="56" Background="#0B1017">
-              <ItemsControl>
+            <Grid Height="56" Background="{DynamicResource SurfaceBrush}">
+              <ItemsControl Width="{Binding DataContext.TimelinePixelWidth, RelativeSource={RelativeSource AncestorType=UserControl}}" ClipToBounds="True">
                 <ItemsControl.ItemsSource>
                   <MultiBinding Converter="{StaticResource VisiblePrograms}">
                     <Binding Path="Programs"/>
@@ -113,7 +115,9 @@
                   </MultiBinding>
                 </ItemsControl.ItemsSource>
                 <ItemsControl.ItemsPanel>
-                  <ItemsPanelTemplate><Canvas/></ItemsPanelTemplate>
+                  <ItemsPanelTemplate>
+                    <Canvas Width="{Binding DataContext.TimelinePixelWidth, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                  </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemContainerStyle>
                   <Style TargetType="ContentPresenter">
