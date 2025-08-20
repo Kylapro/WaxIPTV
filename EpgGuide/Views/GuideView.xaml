@@ -7,6 +7,7 @@
     <local:TimeToXConverter x:Key="TimeToX"/>
     <local:DurationToWidthConverter x:Key="TimeToW"/>
     <local:VisibleProgramsConverter x:Key="VisiblePrograms"/>
+    <local:UtcToLocalConverter x:Key="UtcToLocal"/>
     <Style x:Key="ProgramCell" TargetType="Button">
       <Setter Property="Padding" Value="{DynamicResource SpacingS}"/>
       <Setter Property="BorderThickness" Value="0"/>
@@ -49,7 +50,7 @@
     <Border Grid.Row="1" Grid.ColumnSpan="2" Background="{DynamicResource SurfaceBrush}" Padding="12" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,0,0,1">
       <StackPanel>
         <TextBlock Text="{Binding SelectedProgram.Title}" FontSize="18" FontWeight="Bold"/>
-        <TextBlock Text="{Binding SelectedProgram.StartUtc, StringFormat='{}{0:HH:mm} UTC'}" Opacity="0.7"/>
+        <TextBlock Text="{Binding SelectedProgram.StartUtc, Converter={StaticResource UtcToLocal}, StringFormat='{}{0:HH:mm}'}" Opacity="0.7"/>
         <TextBlock Text="{Binding SelectedProgram.Synopsis}" Opacity="0.8" TextTrimming="WordEllipsis"/>
       </StackPanel>
     </Border>
@@ -65,6 +66,11 @@
         <ItemsControl.ItemsPanel>
           <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
         </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <TextBlock Text="{Binding Converter={StaticResource UtcToLocal}, StringFormat='{}{0:HH:mm}'}" Padding="10,6" FontWeight="Bold"/>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
       </ItemsControl>
     </ScrollViewer>
 
@@ -106,17 +112,17 @@
         <ItemsControl.ItemTemplate>
           <DataTemplate DataType="{x:Type local:ChannelRow}">
             <Grid Height="56" Background="{DynamicResource SurfaceBrush}">
-              <ItemsControl Width="{Binding DataContext.TimelinePixelWidth, RelativeSource={RelativeSource AncestorType=UserControl}}" ClipToBounds="True">
+              <ItemsControl Width="{Binding DataContext.TimelinePixelWidth, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}" ClipToBounds="True">
                 <ItemsControl.ItemsSource>
                   <MultiBinding Converter="{StaticResource VisiblePrograms}">
                     <Binding Path="Programs"/>
-                    <Binding RelativeSource="{RelativeSource AncestorType=UserControl}" Path="DataContext.VisibleStartUtc"/>
-                    <Binding RelativeSource="{RelativeSource AncestorType=UserControl}" Path="DataContext.VisibleEndUtc"/>
+                    <Binding RelativeSource="{RelativeSource AncestorType={x:Type UserControl}}" Path="DataContext.VisibleStartUtc"/>
+                    <Binding RelativeSource="{RelativeSource AncestorType={x:Type UserControl}}" Path="DataContext.VisibleEndUtc"/>
                   </MultiBinding>
                 </ItemsControl.ItemsSource>
                 <ItemsControl.ItemsPanel>
                   <ItemsPanelTemplate>
-                    <Canvas Width="{Binding DataContext.TimelinePixelWidth, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                    <Canvas Width="{Binding DataContext.TimelinePixelWidth, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}"/>
                   </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemContainerStyle>
@@ -125,8 +131,8 @@
                       <Setter.Value>
                         <MultiBinding Converter="{StaticResource TimeToX}">
                           <Binding Path="StartUtc"/>
-                          <Binding RelativeSource="{RelativeSource AncestorType=UserControl}" Path="DataContext.VisibleStartUtc"/>
-                          <Binding RelativeSource="{RelativeSource AncestorType=UserControl}" Path="DataContext.PxPerMinute"/>
+                          <Binding RelativeSource="{RelativeSource AncestorType={x:Type UserControl}}" Path="DataContext.VisibleStartUtc"/>
+                          <Binding RelativeSource="{RelativeSource AncestorType={x:Type UserControl}}" Path="DataContext.PxPerMinute"/>
                         </MultiBinding>
                       </Setter.Value>
                     </Setter>
@@ -134,7 +140,7 @@
                       <Setter.Value>
                         <MultiBinding Converter="{StaticResource TimeToW}">
                           <Binding Path="StartUtc"/><Binding Path="EndUtc"/>
-                          <Binding RelativeSource="{RelativeSource AncestorType=UserControl}" Path="DataContext.PxPerMinute"/>
+                          <Binding RelativeSource="{RelativeSource AncestorType={x:Type UserControl}}" Path="DataContext.PxPerMinute"/>
                         </MultiBinding>
                       </Setter.Value>
                     </Setter>

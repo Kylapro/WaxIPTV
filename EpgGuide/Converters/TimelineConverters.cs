@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Windows;
 using System.Windows.Data;
 
 namespace WaxIPTV.EpgGuide;
@@ -35,4 +36,13 @@ public sealed class VisibleProgramsConverter : IMultiValueConverter
         return list.ToArray();
     }
     public object[] ConvertBack(object v, Type[] t, object p, CultureInfo c) => throw new NotSupportedException();
+}
+
+public sealed class UtcToLocalConverter : IValueConverter
+{
+    public object Convert(object v, Type t, object p, CultureInfo c)
+        => v is DateTime dt ? dt.ToLocalTime() : DependencyProperty.UnsetValue;
+
+    public object ConvertBack(object v, Type t, object p, CultureInfo c)
+        => v is DateTime dt ? dt.ToUniversalTime() : DependencyProperty.UnsetValue;
 }
