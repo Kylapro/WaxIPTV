@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.ComponentModel;
 using WaxIPTV.Models;
 
 namespace WaxIPTV.Views
@@ -17,11 +18,27 @@ namespace WaxIPTV.Views
     /// the header with a Play button to start playback via a callback provided
     /// by the main window.
     /// </summary>
-    public partial class EpgGuideWindow : Window
+    public partial class EpgGuideWindow : Window, INotifyPropertyChanged
     {
         private const int TimelineHours = 12;
-        private const double PixelsPerMinute = 2.0;
-        public static readonly double TimelineWidth = TimelineHours * 60 * PixelsPerMinute;
+        private const double MinBlockWidth = 24.0;
+        private double _pixelsPerMinute = 4.0;
+
+        public double PixelsPerMinute
+        {
+            get => _pixelsPerMinute;
+            set
+            {
+                if (Math.Abs(_pixelsPerMinute - value) > double.Epsilon)
+                {
+                    _pixelsPerMinute = value;
+                    OnPropertyChanged(nameof(PixelsPerMinute));
+                    OnPropertyChanged(nameof(TimelineWidth));
+                }
+            }
+        }
+
+        public double TimelineWidth => TimelineHours * 60 * PixelsPerMinute;
 
         private readonly List<Channel> _channels;
         private readonly Dictionary<string, List<Programme>> _programmes;
@@ -48,6 +65,7 @@ namespace WaxIPTV.Views
             _startUtc = DateTimeOffset.UtcNow;
             _endUtc = _startUtc.AddHours(TimelineHours);
 
+            DataContext = this;
             ChannelItems.ItemsSource = _rows;
             PopulateGroupFilter();
             BuildTimelineHeader();
@@ -75,7 +93,7 @@ namespace WaxIPTV.Views
                 var t = localStart.AddHours(i);
                 items.Add(new TimelineHeaderItem
                 {
-                    Left = i * 60 * PixelsPerMinute,
+                    Left = Math.Round(i * 60 * PixelsPerMinute),
                     Label = t.ToString("HH:mm")
                 });
             }
@@ -158,9 +176,14 @@ namespace WaxIPTV.Views
                     continue;
                 var start = prog.StartUtc < _startUtc ? _startUtc : prog.StartUtc;
                 var end = prog.EndUtc > _endUtc ? _endUtc : prog.EndUtc;
-                var left = (start - _startUtc).TotalMinutes * PixelsPerMinute;
-                var width = (end - start).TotalMinutes * PixelsPerMinute;
-                blocks.Add(new EpgBlock { Channel = ch, Programme = prog, Left = left, Width = width });
+                var left = Math.Round((start - _startUtc).TotalMinutes * PixelsPerMinute);
+                var right = Math.Round((end - _startUtc).TotalMinutes * PixelsPerMinute);
+                var width = right - left;
+                var showTitle = width >= MinBlockWidth;
+                if (width < MinBlockWidth)
+                    width = MinBlockWidth;
+                var tooltip = $"{prog.Title}\n{prog.StartUtc.ToLocalTime():HH:mm} - {prog.EndUtc.ToLocalTime():HH:mm}";
+                blocks.Add(new EpgBlock { Channel = ch, Programme = prog, Left = left, Width = width, ShowTitle = showTitle, Tooltip = tooltip });
             }
             return blocks;
         }
@@ -215,12 +238,28 @@ namespace WaxIPTV.Views
             public required Programme Programme { get; init; }
             public double Left { get; init; }
             public double Width { get; init; }
+            public bool ShowTitle { get; init; }
+            public required string Tooltip { get; init; }
         }
 
         private sealed class TimelineHeaderItem
         {
             public double Left { get; init; }
             public required string Label { get; init; }
+        }
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+
+        private void OnPropertyChanged(string propertyName)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        private void ZoomSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            PixelsPerMinute = e.NewValue;
+            BuildTimelineHeader();
+            ApplyFilter();
         }
     }
 }
