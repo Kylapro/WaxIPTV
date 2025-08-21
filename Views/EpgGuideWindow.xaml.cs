@@ -21,6 +21,7 @@ namespace WaxIPTV.Views
     {
         private const int TimelineHours = 12;
         private const double PixelsPerMinute = 2.0;
+        private const double MinBlockWidth = 20.0;
         public static readonly double TimelineWidth = TimelineHours * 60 * PixelsPerMinute;
 
         private readonly List<Channel> _channels;
@@ -75,7 +76,7 @@ namespace WaxIPTV.Views
                 var t = localStart.AddHours(i);
                 items.Add(new TimelineHeaderItem
                 {
-                    Left = i * 60 * PixelsPerMinute,
+                    Left = Math.Round(i * 60 * PixelsPerMinute),
                     Label = t.ToString("HH:mm")
                 });
             }
@@ -160,7 +161,22 @@ namespace WaxIPTV.Views
                 var end = prog.EndUtc > _endUtc ? _endUtc : prog.EndUtc;
                 var left = (start - _startUtc).TotalMinutes * PixelsPerMinute;
                 var width = (end - start).TotalMinutes * PixelsPerMinute;
-                blocks.Add(new EpgBlock { Channel = ch, Programme = prog, Left = left, Width = width });
+                var right = left + width;
+                var leftRounded = Math.Round(left);
+                var rightRounded = Math.Round(right);
+                var widthRounded = rightRounded - leftRounded;
+                var displayWidth = Math.Max(widthRounded, MinBlockWidth);
+                var showTitle = widthRounded >= MinBlockWidth;
+                var tooltip = $"{prog.Title}\n{prog.StartUtc.ToLocalTime():HH:mm} - {prog.EndUtc.ToLocalTime():HH:mm}";
+                blocks.Add(new EpgBlock
+                {
+                    Channel = ch,
+                    Programme = prog,
+                    Left = leftRounded,
+                    Width = displayWidth,
+                    ShowTitle = showTitle,
+                    Tooltip = tooltip
+                });
             }
             return blocks;
         }
@@ -215,6 +231,8 @@ namespace WaxIPTV.Views
             public required Programme Programme { get; init; }
             public double Left { get; init; }
             public double Width { get; init; }
+            public bool ShowTitle { get; init; }
+            public required string Tooltip { get; init; }
         }
 
         private sealed class TimelineHeaderItem
