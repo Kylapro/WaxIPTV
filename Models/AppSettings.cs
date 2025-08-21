@@ -51,7 +51,7 @@ namespace WaxIPTV.Models
 
         /// <summary>
         /// Optional mapping of playlist channel names to XMLTV channel identifiers.  When provided,
-        /// these aliases override automatic name matching and fuzzy matching in the EPG mapper.
+        /// these aliases override automatic name matching in the EPG mapper.
         /// The key should be the normalised channel name (as displayed in the UI) and the value
         /// should be the XMLTV channel ID from the EPG feed.  Entries are compared in a
         /// case-insensitive manner.  If an alias is specified for a channel, the EPG will

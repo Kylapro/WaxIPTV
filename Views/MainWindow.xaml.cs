@@ -656,7 +656,7 @@ namespace WaxIPTV.Views
 
                     // Pass any manual EPG ID aliases from settings to the mapper.  These aliases
                     // allow users to map playlist channel names to specific XMLTV IDs when
-                    // automatic or fuzzy matching fails.  The aliases dictionary is copied to
+                    // automatic matching fails.  The aliases dictionary is copied to
                     // ensure case-insensitive keys.
                     Dictionary<string, string>? overrides = null;
                     try
@@ -798,16 +798,7 @@ namespace WaxIPTV.Views
                                 }
                                 else
                                 {
-                                    // Fuzzy match: first display-name normalizing to same string
-                                    var fuzzy = epgNameToId.FirstOrDefault(p => Normalize(p.Key) == norm);
-                                    if (!string.IsNullOrWhiteSpace(fuzzy.Key))
-                                    {
-                                        sw.WriteLine($"- {ch.Name}  suggestion: epgIdAliases[\"{norm}\"] = \"{fuzzy.Value}\"  // matches display-name \"{fuzzy.Key}\"");
-                                    }
-                                    else
-                                    {
-                                        sw.WriteLine($"- {ch.Name}  (no obvious XMLTV match) — check playlist tvg-id/tvg-name vs XMLTV <display-name>");
-                                    }
+                                    sw.WriteLine($"- {ch.Name}  (no obvious XMLTV match) — check playlist tvg-id/tvg-name vs XMLTV <display-name>");
                                 }
                             }
                             sw.WriteLine();
