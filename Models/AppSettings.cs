@@ -50,15 +50,24 @@ namespace WaxIPTV.Models
         public int EpgRefreshHours { get; set; } = 12;
 
         /// <summary>
-        /// Optional mapping of playlist channel names to XMLTV channel identifiers.  When provided,
-        /// these aliases override automatic name matching and fuzzy matching in the EPG mapper.
-        /// The key should be the normalised channel name (as displayed in the UI) and the value
-        /// should be the XMLTV channel ID from the EPG feed.  Entries are compared in a
-        /// case-insensitive manner.  If an alias is specified for a channel, the EPG will
-        /// always use the mapped ID regardless of other matches.
+        /// Optional mapping of application channel identifiers to additional
+        /// XMLTV channel IDs that should be considered equivalent when
+        /// loading EPG data. Each entry maps a playlist channel's internal ID
+        /// to one or more XMLTV ids that should also be accepted when
+        /// associating programmes with that channel.
         /// </summary>
         [JsonPropertyName("epgIdAliases")]
-        public Dictionary<string, string>? EpgIdAliases { get; set; }
+        public Dictionary<string, string[]>? EpgIdAliases { get; set; }
+
+        /// <summary>
+        /// Determines how programmes from the XMLTV feed are matched to
+        /// playlist channels. The default <see cref="EpgMatchMode.StrictIdsOnly"/>
+        /// maps programmes solely by tvg-id and aliases. The
+        /// <see cref="EpgMatchMode.IdsThenExactName"/> mode falls back to an
+        /// exact display-name match only if a channel receives no programmes.
+        /// </summary>
+        [JsonPropertyName("epgMatchMode")]
+        public EpgMatchMode EpgMatchMode { get; set; } = EpgMatchMode.StrictIdsOnly;
 
         /// <summary>
         /// Optional global EPG time shift in minutes.  Some providers supply

@@ -6,6 +6,7 @@
   "xmltvUrl": "D:\\iptv\\guide.xml",
   "epgRefreshHours": 12,
   "epgIdAliases": {},
+  "epgMatchMode": "StrictIdsOnly",
   "epgShiftMinutes": 0,
   "logLevel": "Information",
   "logIncludeSensitive": false,

@@ -53,5 +53,50 @@ namespace WaxIPTV.Services
             Programme? next = (nextIndex >= 0 && nextIndex < programmes.Count) ? programmes[nextIndex] : null;
             return (now, next);
         }
+
+        /// <summary>
+        /// Sorts the supplied programme list and removes or trims overlapping
+        /// entries. Adjacent programmes with the same title are merged. The
+        /// method returns the number of overlaps that were trimmed or removed.
+        /// </summary>
+        /// <param name="programmes">Programme list for a single channel.</param>
+        /// <returns>The number of overlaps that were resolved.</returns>
+        public static int CleanOverlaps(List<Programme> programmes)
+        {
+            if (programmes == null || programmes.Count <= 1)
+                return 0;
+            programmes.Sort((a, b) => a.StartUtc.CompareTo(b.StartUtc));
+            var cleaned = new List<Programme>(programmes.Count);
+            Programme? prev = programmes[0];
+            int overlaps = 0;
+            for (int i = 1; i < programmes.Count; i++)
+            {
+                var cur = programmes[i];
+                if (cur.StartUtc < prev.EndUtc)
+                {
+                    overlaps++;
+                    if (string.Equals(cur.Title, prev.Title, StringComparison.OrdinalIgnoreCase))
+                    {
+                        // merge by extending the previous end time
+                        if (cur.EndUtc > prev.EndUtc)
+                            prev = prev with { EndUtc = cur.EndUtc };
+                        continue;
+                    }
+                    if (cur.EndUtc <= prev.EndUtc)
+                    {
+                        // completely overlapped; drop
+                        continue;
+                    }
+                    // partially overlap; trim start
+                    cur = cur with { StartUtc = prev.EndUtc };
+                }
+                cleaned.Add(prev);
+                prev = cur;
+            }
+            cleaned.Add(prev);
+            programmes.Clear();
+            programmes.AddRange(cleaned);
+            return overlaps;
+        }
     }
 }

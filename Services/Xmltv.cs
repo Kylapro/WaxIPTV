@@ -123,8 +123,10 @@ namespace WaxIPTV.Services
         /// </summary>
         /// <param name="xml">Raw XMLTV content.</param>
         /// <param name="channelNames">Dictionary to receive channel id/display name pairs.</param>
+        /// <param name="allowedChannelIds">Optional set of channel IDs to include. When provided,
+        /// only programmes whose channel attribute is contained in this set are yielded.</param>
         /// <returns>An enumeration of <see cref="Programme"/> items.</returns>
-        public static IEnumerable<Programme> StreamProgrammes(string xml, Dictionary<string, string> channelNames)
+        public static IEnumerable<Programme> StreamProgrammes(string xml, Dictionary<string, string> channelNames, HashSet<string>? allowedChannelIds = null)
         {
             if (string.IsNullOrWhiteSpace(xml))
                 yield break;
@@ -167,6 +169,8 @@ namespace WaxIPTV.Services
                 else if (xr.Name.Equals("programme", StringComparison.OrdinalIgnoreCase))
                 {
                     var channelId = xr.GetAttribute("channel") ?? string.Empty;
+                    if (allowedChannelIds != null && !allowedChannelIds.Contains(channelId))
+                        continue;
                     var startRaw = xr.GetAttribute("start") ?? string.Empty;
                     var stopRaw = xr.GetAttribute("stop") ?? string.Empty;
                     var start = ParseXmltvTime(startRaw);

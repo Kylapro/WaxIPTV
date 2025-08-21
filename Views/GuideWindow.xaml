@@ -151,7 +151,8 @@
                                                     BorderThickness="1"
                                                     CornerRadius="4"
                                                     ToolTip="{Binding ToolTip}"
-                                                    MouseLeftButtonUp="ProgrammeSlot_Click">
+                                                    MouseLeftButtonUp="ProgrammeSlot_Click"
+                                                    ClipToBounds="True">
                                                 <TextBlock Text="{Binding DisplayTitle}"
                                                            Foreground="{DynamicResource TextBrush}"
                                                            FontSize="12"

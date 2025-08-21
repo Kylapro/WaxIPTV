@@ -629,59 +629,92 @@ namespace WaxIPTV.Views
                         AppLog.Logger.Warning(ex, "Failed applying EPG time shift");
                     }
 
-                    var programmeStream = Xmltv.StreamProgrammes(xml, channelNames).Select(p =>
+                    // Build allowed channel id set from tvg-id and aliases
+                    var allowedIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    var idToChannel = new Dictionary<string, Channel>(StringComparer.OrdinalIgnoreCase);
+                    var aliasMap = _settingsService.Settings.EpgIdAliases ?? new Dictionary<string, string[]>();
+                    foreach (var ch in _channels)
                     {
-                        totalProgrammes++;
-                        return shiftMinutes != 0
-                            ? p with
+                        var ids = new List<string>();
+                        if (!string.IsNullOrWhiteSpace(ch.TvgId))
+                            ids.Add(ch.TvgId!);
+                        if (aliasMap.TryGetValue(ch.Id, out var arr) && arr != null)
+                            ids.AddRange(arr);
+                        foreach (var id in ids)
+                        {
+                            if (allowedIds.Add(id))
+                                idToChannel[id] = ch;
+                        }
+                    }
+
+                    var matchMode = EpgMatchMode.StrictIdsOnly;
+                    try { matchMode = _settingsService.Settings.EpgMatchMode; } catch { }
+
+                    var overlapsPerChannel = new Dictionary<string, int>();
+                    var fallbackUsed = new HashSet<string>();
+
+                    IEnumerable<Programme> LoadFiltered(HashSet<string> filterIds) =>
+                        Xmltv.StreamProgrammes(xml, channelNames, filterIds).Select(p =>
+                        {
+                            totalProgrammes++;
+                            return shiftMinutes != 0
+                                ? p with { StartUtc = p.StartUtc.AddMinutes(shiftMinutes), EndUtc = p.EndUtc.AddMinutes(shiftMinutes) }
+                                : p;
+                        });
+
+                    foreach (var p in LoadFiltered(allowedIds))
+                    {
+                        if (idToChannel.TryGetValue(p.ChannelId, out var ch))
+                        {
+                            if (!programmesDict.TryGetValue(ch.Id, out var list))
+                                programmesDict[ch.Id] = list = new List<Programme>();
+                            list.Add(p);
+                        }
+                    }
+
+                    // Clean overlaps for initially mapped channels
+                    foreach (var kv in programmesDict)
+                    {
+                        overlapsPerChannel[kv.Key] = EpgHelpers.CleanOverlaps(kv.Value);
+                    }
+
+                    if (matchMode == EpgMatchMode.IdsThenExactName)
+                    {
+                        var unmatched = _channels.Where(c => !programmesDict.TryGetValue(c.Id, out var l) || l.Count == 0).ToList();
+                        var extraIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                        foreach (var ch in unmatched)
+                        {
+                            foreach (var kv in channelNames)
                             {
-                                StartUtc = p.StartUtc.AddMinutes(shiftMinutes),
-                                EndUtc = p.EndUtc.AddMinutes(shiftMinutes)
+                                if (string.Equals(kv.Value, ch.Name, StringComparison.Ordinal))
+                                {
+                                    if (extraIds.Add(kv.Key))
+                                    {
+                                        idToChannel[kv.Key] = ch;
+                                        fallbackUsed.Add(ch.Id);
+                                    }
+                                }
                             }
-                            : p;
-                    });
-
-                    // Pass any manual EPG ID aliases from settings to the mapper.  These aliases
-                    // allow users to map playlist channel names to specific XMLTV IDs when
-                    // automatic or fuzzy matching fails.  The aliases dictionary is copied to
-                    // ensure case-insensitive keys.
-                    Dictionary<string, string>? overrides = null;
-                    try
-                    {
-                        var aliasMap = _settingsService.Settings.EpgIdAliases;
-                        if (aliasMap != null && aliasMap.Count > 0)
-                        {
-                            overrides = new Dictionary<string, string>(aliasMap, StringComparer.OrdinalIgnoreCase);
                         }
-                    }
-                    catch (Exception ex)
-                    {
-                        // ignore alias loading errors and fall back to null
-                        AppLog.Logger.Warning(ex, "Error processing EPG ID aliases");
-                        overrides = null;
-                    }
-
-                    // Map the programmes to channels using the batched mapper. The stream
-                    // enumerates lazily, keeping memory usage low when handling large EPGs.
-                    var progress = new Progress<int>(count =>
-                    {
-                        try
+                        if (extraIds.Count > 0)
                         {
-                            Dispatcher.Invoke(() =>
+                            foreach (var p in LoadFiltered(extraIds))
                             {
-                                if (MainEpgLoadingLabel != null)
-                                    MainEpgLoadingLabel.Text = $"Loading EPG... ({count} programmes)";
-                                // Update now/next display as data becomes available
-                        UpdateNowNextForSelected();
-                            });
+                                if (idToChannel.TryGetValue(p.ChannelId, out var ch))
+                                {
+                                    if (!programmesDict.TryGetValue(ch.Id, out var list))
+                                        programmesDict[ch.Id] = list = new List<Programme>();
+                                    list.Add(p);
+                                }
+                            }
+                            foreach (var id in fallbackUsed)
+                            {
+                                if (programmesDict.TryGetValue(id, out var list))
+                                    overlapsPerChannel[id] = EpgHelpers.CleanOverlaps(list);
+                            }
                         }
-                        catch
-                        {
-                            // ignore UI update errors
-                        }
-                    });
-                    programmesDict = EpgMapper.MapProgrammesInBatches(programmeStream, _channels, channelNames, 200, overrides, progress, programmesDict);
-                    AppLog.Logger.Information("Mapping {ProgCount} programmes", totalProgrammes);
+                    }
+
                     // Trim programmes beyond 7 days to limit memory usage
                     var cutoff = DateTimeOffset.UtcNow.AddDays(7);
                     foreach (var kv in programmesDict)
@@ -690,120 +723,43 @@ namespace WaxIPTV.Views
                     }
                     _epgLoadedAt = DateTimeOffset.UtcNow;
 
-                    // -------------------------------------------------------------------
-                    // After mapping, record diagnostics and update counters.  The counters
-                    // show how many channels and programmes were parsed and mapped.  The
-                    // diagnostics file lists any playlist channels that were not mapped,
-                    // along with suggestions for epgIdAliases to help the user fix
-                    // mismatches between playlist names/ids and the XMLTV guide.
+                    // Log diagnostics per channel
+                    foreach (var ch in _channels)
+                    {
+                        if (programmesDict.TryGetValue(ch.Id, out var list))
+                        {
+                            overlapsPerChannel.TryGetValue(ch.Id, out var ov);
+                            var fb = fallbackUsed.Contains(ch.Id);
+                            AppLog.Logger.Information("EPG channel {Channel}: items={Items}, overlaps={Overlap}, fallbackUsed={Fallback}", ch.Name, list.Count, ov, fb);
+                        }
+                        else
+                        {
+                            AppLog.Logger.Warning("No EPG data for {Channel}", ch.Name);
+                        }
+                        if (aliasMap.TryGetValue(ch.Id, out var arr) && arr != null)
+                        {
+                            foreach (var a in arr)
+                            {
+                                if (!channelNames.ContainsKey(a))
+                                    AppLog.Logger.Warning("EPG alias {Alias} for {Channel} not found in XMLTV", a, ch.Name);
+                            }
+                        }
+                    }
+
+                    // Update counters in UI
                     try
                     {
-                        // Compute counts
                         int epgChannelNames = channelNames.Count;
                         int totalProgrammesCount = totalProgrammes;
                         int mappedChannelsCount = programmesDict.Count;
-                        int mappedProgrammesCount = 0;
-                        foreach (var list in programmesDict.Values)
-                        {
-                            mappedProgrammesCount += list.Count;
-                        }
-
-                        // Update the in-app counters on the UI thread
+                        int mappedProgrammesCount = programmesDict.Sum(kv => kv.Value.Count);
                         Dispatcher.Invoke(() =>
                         {
                             if (EpgCountersText != null)
-                            {
                                 EpgCountersText.Text = $"EPG: channels in XMLTV={epgChannelNames}, programmes={totalProgrammesCount}, mapped channels={mappedChannelsCount}, mapped programmes={mappedProgrammesCount}";
-                            }
                         });
-
-                        // Build diagnostics file listing unmatched channels and alias suggestions
-                        var allPlaylist = _channels ?? new List<Channel>();
-                        var mappedSet = new HashSet<string>(programmesDict.Keys);
-                        var missing = allPlaylist.Where(ch => !mappedSet.Contains(ch.Id)).ToList();
-
-                        // Write diagnostics file
-                        var diagPath = System.IO.Path.Combine(
-                            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                            "WaxIPTV", "epg-diagnostics.txt");
-                        System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(diagPath)!);
-                        using (var sw = new System.IO.StreamWriter(diagPath, false, System.Text.Encoding.UTF8))
-                        {
-                            sw.WriteLine($"[EPG Diagnostics] {DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss}");
-                            sw.WriteLine($"Playlist channels: {allPlaylist.Count}");
-                            sw.WriteLine($"Mapped channels:   {mappedSet.Count}");
-                            sw.WriteLine($"Unmatched (playlist but no EPG): {missing.Count}");
-                            sw.WriteLine();
-                            // Build lookup from display-name to XMLTV id
-                            var epgNameToId = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                            foreach (var kv in channelNames)
-                            {
-                                // kv.Key = xmltv channel id, kv.Value = display name
-                                epgNameToId[kv.Value] = kv.Key;
-                            }
-                            string Normalize(string s)
-                            {
-                                if (string.IsNullOrWhiteSpace(s)) return string.Empty;
-                                var sb = new System.Text.StringBuilder();
-                                foreach (var ch in s.ToLowerInvariant())
-                                    if (char.IsLetterOrDigit(ch)) sb.Append(ch);
-                                var norm = sb.ToString();
-                                string[] suffixes = { "uhd", "fhd", "hd", "sd", "4k" };
-                                bool stripped;
-                                do
-                                {
-                                    stripped = false;
-                                    foreach (var sfx in suffixes)
-                                    {
-                                        if (norm.EndsWith(sfx, StringComparison.Ordinal))
-                                        {
-                                            norm = norm.Substring(0, norm.Length - sfx.Length);
-                                            stripped = true;
-                                            break;
-                                        }
-                                    }
-                                } while (stripped);
-                                return norm;
-                            }
-                            // Write suggestions
-                            foreach (var ch in missing)
-                            {
-                                var norm = Normalize(ch.TvgName ?? ch.Name);
-                                if (!string.IsNullOrEmpty(ch.TvgId))
-                                {
-                                    sw.WriteLine($"- {ch.Name}  (has tvg-id=\"{ch.TvgId}\") → XMLTV id must equal that value");
-                                }
-                                else if (epgNameToId.TryGetValue(ch.TvgName ?? ch.Name, out var xmltvId))
-                                {
-                                    sw.WriteLine($"- {ch.Name}  suggestion: epgIdAliases[\"{norm}\"] = \"{xmltvId}\"");
-                                }
-                                else
-                                {
-                                    // Fuzzy match: first display-name normalizing to same string
-                                    var fuzzy = epgNameToId.FirstOrDefault(p => Normalize(p.Key) == norm);
-                                    if (!string.IsNullOrWhiteSpace(fuzzy.Key))
-                                    {
-                                        sw.WriteLine($"- {ch.Name}  suggestion: epgIdAliases[\"{norm}\"] = \"{fuzzy.Value}\"  // matches display-name \"{fuzzy.Key}\"");
-                                    }
-                                    else
-                                    {
-                                        sw.WriteLine($"- {ch.Name}  (no obvious XMLTV match) — check playlist tvg-id/tvg-name vs XMLTV <display-name>");
-                                    }
-                                }
-                            }
-                            sw.WriteLine();
-                            sw.WriteLine("Edit settings.json: add epgIdAliases entries like:");
-                            sw.WriteLine("{");
-                            sw.WriteLine("  \"epgIdAliases\": {");
-                            sw.WriteLine("    \"normalizedplaylistname\": \"xmltv-channel-id\"");
-                            sw.WriteLine("  }");
-                            sw.WriteLine("}");
-                        }
                     }
-                    catch
-                    {
-                        // ignore diagnostics errors
-                    }
+                    catch { }
                 }
                 catch (Exception ex)
                 {
