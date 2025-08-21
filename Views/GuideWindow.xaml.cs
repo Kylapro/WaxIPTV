@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using System.Windows;
 using WaxIPTV.EpgGuide;
 
@@ -16,10 +17,10 @@ namespace WaxIPTV.Views
             InitializeComponent();
             _parent = parent;
 
-            Loaded += (_, __) =>
+            Loaded += async (_, __) =>
             {
                 if (parent.CurrentEpgSnapshot != null)
-                    ((GuideViewModel)Guide.DataContext).LoadFrom(parent.CurrentEpgSnapshot);
+                    await ((GuideViewModel)Guide.DataContext).LoadFromAsync(parent.CurrentEpgSnapshot);
             };
 
             parent.EpgSnapshotUpdated += Parent_EpgSnapshotUpdated;
@@ -28,8 +29,8 @@ namespace WaxIPTV.Views
 
         private void Parent_EpgSnapshotUpdated(EpgSnapshot snapshot)
         {
-            Dispatcher.Invoke(() =>
-                ((GuideViewModel)Guide.DataContext).LoadFrom(snapshot));
+            Dispatcher.InvokeAsync(async () =>
+                await ((GuideViewModel)Guide.DataContext).LoadFromAsync(snapshot));
         }
     }
 }
