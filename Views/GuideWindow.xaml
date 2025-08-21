@@ -1,9 +1,0 @@
-<Window x:Class="WaxIPTV.Views.GuideWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:epg="clr-namespace:WaxIPTV.EpgGuide"
-        Title="EPG Guide" Height="600" Width="1000"
-        Background="{DynamicResource BgBrush}"
-        Foreground="{DynamicResource TextBrush}">
-    <epg:GuideView x:Name="Guide"/>
-</Window>

@@ -11,7 +11,6 @@ using System.Text;
 using WaxIPTV.Models;
 using WaxIPTV.Services;
 using WaxIPTV.Services.Logging;
-using WaxIPTV.EpgGuide;
 
 namespace WaxIPTV.Views
 {
@@ -29,9 +28,6 @@ namespace WaxIPTV.Views
         private List<Channel> _channels = new();
         private Dictionary<string, List<Programme>> _programmes = new();
         private DateTimeOffset _epgLoadedAt = DateTimeOffset.MinValue;
-        private EpgSnapshot? _epgSnapshot;
-        public EpgSnapshot? CurrentEpgSnapshot => _epgSnapshot;
-        public event Action<EpgSnapshot>? EpgSnapshotUpdated;
         // Timer used to refresh the Now/Next display on a fixed schedule.
         private System.Windows.Threading.DispatcherTimer? _nowNextTimer;
         // Background task cancellation token for EPG refresh (optional)
@@ -531,11 +527,6 @@ namespace WaxIPTV.Views
 
             var programmesDict = new Dictionary<string, List<Programme>>();
             _programmes = programmesDict;
-            if (EpgSnapshotUpdated != null)
-            {
-                _epgSnapshot = BuildEpgSnapshot(programmesDict);
-                EpgSnapshotUpdated?.Invoke(_epgSnapshot);
-            }
             var cachePath = GetEpgCachePath();
             string? xml = null;
 
@@ -693,11 +684,6 @@ namespace WaxIPTV.Views
                             // ignore UI update errors
                         }
 
-                        if (EpgSnapshotUpdated != null)
-                        {
-                            _epgSnapshot = BuildEpgSnapshot(programmesDict);
-                            EpgSnapshotUpdated?.Invoke(_epgSnapshot);
-                        }
                     });
                     programmesDict = EpgMapper.MapProgrammesInBatches(programmeStream, _channels, channelNames, 200, overrides, progress, programmesDict);
                     AppLog.Logger.Information("Mapping {ProgCount} programmes", totalProgrammes);
@@ -824,8 +810,6 @@ namespace WaxIPTV.Views
             }
 
             _programmes = programmesDict;
-            _epgSnapshot = await System.Threading.Tasks.Task.Run(() => BuildEpgSnapshot(programmesDict));
-            EpgSnapshotUpdated?.Invoke(_epgSnapshot);
             AppLog.Logger.Information("EPG load complete with {Programmes} programmes", programmesDict.Sum(kv => kv.Value.Count));
 
             // Hide the main window EPG loading indicator when loading completes.  Also update
@@ -1202,21 +1186,6 @@ namespace WaxIPTV.Views
         /// displaying the programme guide for all channels.  Passes the
         /// current channels and programmes to the guide.
         /// </summary>
-        private void GuideMenu_Click(object sender, RoutedEventArgs e)
-        {
-            if (_channels == null || _channels.Count == 0)
-            {
-                MessageBox.Show("No channels are loaded yet.", "EPG Guide", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
-            var guide = new GuideWindow(this)
-            {
-                Owner = this
-            };
-            guide.Show();
-        }
-
         /// <summary>
         /// Handler for the Exit menu item.  Closes the main window,
         /// shutting down the application.
@@ -1259,45 +1228,6 @@ namespace WaxIPTV.Views
             // Now/Next for the currently selected channel.
             await LoadEpgAsync(s.XmltvUrl, s.EpgRefreshHours, force: true);
             UpdateNowNextForSelected();
-        }
-
-        private EpgSnapshot BuildEpgSnapshot(Dictionary<string, List<Programme>> programmes)
-        {
-            var channelMetas = new ChannelMeta[_channels.Count];
-            var programBlocks = new List<ProgramBlock>();
-            for (int i = 0; i < _channels.Count; i++)
-            {
-                var ch = _channels[i];
-                channelMetas[i] = new ChannelMeta
-                {
-                    TvgId = ch.Id,
-                    Number = (i + 1).ToString(),
-                    Name = ch.Name,
-                    Group = ch.Group,
-                    LogoPath = ch.Logo
-                };
-                if (programmes.TryGetValue(ch.Id, out var list))
-                {
-                    foreach (var p in list)
-                    {
-                        programBlocks.Add(new ProgramBlock
-                        {
-                            ChannelTvgId = ch.Id,
-                            Title = p.Title,
-                            Synopsis = p.Desc,
-                            StartUtc = p.StartUtc.UtcDateTime,
-                            EndUtc = p.EndUtc.UtcDateTime,
-                            IsLive = false,
-                            IsNew = false
-                        });
-                    }
-                }
-            }
-            return new EpgSnapshot
-            {
-                Channels = channelMetas,
-                Programs = programBlocks.ToArray()
-            };
         }
 
         private sealed class SynchronousProgress<T> : IProgress<T>
