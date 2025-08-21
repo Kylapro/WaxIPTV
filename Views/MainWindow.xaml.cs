@@ -1025,6 +1025,20 @@ namespace WaxIPTV.Views
         }
 
         /// <summary>
+        /// Opens the EPG guide window displaying the timeline for all channels.
+        /// </summary>
+        private void EpgGuide_Click(object sender, RoutedEventArgs e)
+        {
+            var guide = new EpgGuideWindow(_channels, _programmes, PlayChannelFromGuideAsync)
+            {
+                Owner = this
+            };
+            guide.Show();
+        }
+
+        private System.Threading.Tasks.Task PlayChannelFromGuideAsync(Channel ch) => PlayChannelAsync(ch);
+
+        /// <summary>
         /// Pause button handler.  Toggles pause on the active player.
         /// </summary>
         private async void PauseButton_Click(object sender, RoutedEventArgs e)
