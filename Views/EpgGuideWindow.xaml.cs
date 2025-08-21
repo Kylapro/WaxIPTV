@@ -21,7 +21,8 @@ namespace WaxIPTV.Views
     {
         private const int TimelineHours = 12;
         private const double PixelsPerMinute = 2.0;
-        public static readonly double TimelineWidth = TimelineHours * 60 * PixelsPerMinute;
+        private const double MinBlockWidth = 20.0;
+        public static readonly double TimelineWidth = Math.Round(TimelineHours * 60 * PixelsPerMinute);
 
         private readonly List<Channel> _channels;
         private readonly Dictionary<string, List<Programme>> _programmes;
@@ -75,7 +76,7 @@ namespace WaxIPTV.Views
                 var t = localStart.AddHours(i);
                 items.Add(new TimelineHeaderItem
                 {
-                    Left = i * 60 * PixelsPerMinute,
+                    Left = Math.Round(i * 60 * PixelsPerMinute),
                     Label = t.ToString("HH:mm")
                 });
             }
@@ -158,9 +159,27 @@ namespace WaxIPTV.Views
                     continue;
                 var start = prog.StartUtc < _startUtc ? _startUtc : prog.StartUtc;
                 var end = prog.EndUtc > _endUtc ? _endUtc : prog.EndUtc;
-                var left = (start - _startUtc).TotalMinutes * PixelsPerMinute;
-                var width = (end - start).TotalMinutes * PixelsPerMinute;
-                blocks.Add(new EpgBlock { Channel = ch, Programme = prog, Left = left, Width = width });
+
+                var rawLeft = (start - _startUtc).TotalMinutes * PixelsPerMinute;
+                var rawRight = (end - _startUtc).TotalMinutes * PixelsPerMinute;
+                var left = Math.Round(rawLeft);
+                var right = Math.Round(rawRight);
+                if (right - left < MinBlockWidth)
+                    right = left + MinBlockWidth;
+                var width = right - left;
+                var showText = (rawRight - rawLeft) >= MinBlockWidth;
+                var tooltip = $"{prog.Title} ({prog.StartUtc.ToLocalTime():HH:mm} - {prog.EndUtc.ToLocalTime():HH:mm})";
+
+                blocks.Add(new EpgBlock
+                {
+                    Channel = ch,
+                    Programme = prog,
+                    Left = left,
+                    Width = width,
+                    TextVisibility = showText ? Visibility.Visible : Visibility.Collapsed,
+                    LogoVisibility = showText ? Visibility.Collapsed : Visibility.Visible,
+                    ToolTip = tooltip
+                });
             }
             return blocks;
         }
@@ -215,6 +234,9 @@ namespace WaxIPTV.Views
             public required Programme Programme { get; init; }
             public double Left { get; init; }
             public double Width { get; init; }
+            public required Visibility TextVisibility { get; init; }
+            public required Visibility LogoVisibility { get; init; }
+            public required string ToolTip { get; init; }
         }
 
         private sealed class TimelineHeaderItem
