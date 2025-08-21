@@ -6,7 +6,9 @@
         Height="600"
         Width="1000"
         Background="{DynamicResource BgBrush}"
-        Foreground="{DynamicResource TextBrush}">
+        Foreground="{DynamicResource TextBrush}"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True">
     <!--
         Displays a programme guide timeline for all channels.  A search box and
         group selector allow filtering.  Selecting a programme shows its
@@ -48,7 +50,7 @@
 
         <!-- Timeline header showing hour markers -->
         <ScrollViewer DockPanel.Dock="Top" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Hidden" Margin="8,0,8,4">
-            <ItemsControl x:Name="TimelineHeader" Width="{x:Static local:EpgGuideWindow.TimelineWidth}">
+            <ItemsControl x:Name="TimelineHeader" Width="{x:Static local:EpgGuideWindow.TimelineWidth}" SnapsToDevicePixels="True" UseLayoutRounding="True">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                         <Canvas Height="20"/>
@@ -64,7 +66,7 @@
 
         <!-- Main channel/programme timeline list -->
         <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Margin="8">
-            <ItemsControl x:Name="ChannelItems">
+            <ItemsControl x:Name="ChannelItems" SnapsToDevicePixels="True" UseLayoutRounding="True">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
                         <Grid Margin="0,2">
@@ -79,10 +81,10 @@
                             </StackPanel>
                             <!-- Programme timeline -->
                             <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden">
-                                <ItemsControl ItemsSource="{Binding Blocks}" Width="{x:Static local:EpgGuideWindow.TimelineWidth}">
+                                <ItemsControl ItemsSource="{Binding Blocks}" Width="{x:Static local:EpgGuideWindow.TimelineWidth}" SnapsToDevicePixels="True" UseLayoutRounding="True">
                                     <ItemsControl.ItemsPanel>
                                         <ItemsPanelTemplate>
-                                            <Canvas Height="40"/>
+                                            <Canvas Height="40" SnapsToDevicePixels="True" UseLayoutRounding="True"/>
                                         </ItemsPanelTemplate>
                                     </ItemsControl.ItemsPanel>
                                     <ItemsControl.ItemTemplate>
@@ -93,9 +95,26 @@
                                                     Canvas.Left="{Binding Left}"
                                                     Width="{Binding Width}"
                                                     Height="40"
-                                                    MouseLeftButtonUp="ProgrammeBlock_MouseLeftButtonUp">
-                                                <TextBlock Text="{Binding Programme.Title}" TextWrapping="Wrap"/>
+                                                    Padding="4,0"
+                                                    MouseLeftButtonUp="ProgrammeBlock_MouseLeftButtonUp"
+                                                    ToolTip="{Binding Tooltip}" SnapsToDevicePixels="True">
+                                                <Grid>
+                                                    <TextBlock x:Name="TitleText"
+                                                               Text="{Binding Programme.Title}"
+                                                               TextWrapping="NoWrap"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               VerticalAlignment="Center"
+                                                               Margin="0"
+                                                               FontSize="12"/>
+                                                    <Image x:Name="LogoImage" Source="{Binding Channel.Logo}" Width="16" Height="16" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed"/>
+                                                </Grid>
                                             </Border>
+                                            <DataTemplate.Triggers>
+                                                <DataTrigger Binding="{Binding ShowTitle}" Value="False">
+                                                    <Setter TargetName="TitleText" Property="Visibility" Value="Collapsed"/>
+                                                    <Setter TargetName="LogoImage" Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </DataTemplate.Triggers>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
