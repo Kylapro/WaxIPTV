@@ -19,6 +19,10 @@ namespace WaxIPTV.Views
     /// </summary>
     public partial class EpgGuideWindow : Window
     {
+        private const int TimelineHours = 12;
+        private const double PixelsPerMinute = 2.0;
+        public static readonly double TimelineWidth = TimelineHours * 60 * PixelsPerMinute;
+
         private readonly List<Channel> _channels;
         private readonly Dictionary<string, List<Programme>> _programmes;
         private readonly Func<Channel, Task>? _playCallback;
@@ -42,7 +46,7 @@ namespace WaxIPTV.Views
             _programmes = programmes;
             _playCallback = playCallback;
             _startUtc = DateTimeOffset.UtcNow;
-            _endUtc = _startUtc.AddHours(12);
+            _endUtc = _startUtc.AddHours(TimelineHours);
 
             ChannelItems.ItemsSource = _rows;
             PopulateGroupFilter();
@@ -66,12 +70,12 @@ namespace WaxIPTV.Views
         {
             var items = new List<TimelineHeaderItem>();
             var localStart = _startUtc.ToLocalTime();
-            for (int i = 0; i <= 12; i++)
+            for (int i = 0; i <= TimelineHours; i++)
             {
                 var t = localStart.AddHours(i);
                 items.Add(new TimelineHeaderItem
                 {
-                    Left = i * 60,
+                    Left = i * 60 * PixelsPerMinute,
                     Label = t.ToString("HH:mm")
                 });
             }
@@ -154,8 +158,8 @@ namespace WaxIPTV.Views
                     continue;
                 var start = prog.StartUtc < _startUtc ? _startUtc : prog.StartUtc;
                 var end = prog.EndUtc > _endUtc ? _endUtc : prog.EndUtc;
-                var left = (start - _startUtc).TotalMinutes;
-                var width = (end - start).TotalMinutes;
+                var left = (start - _startUtc).TotalMinutes * PixelsPerMinute;
+                var width = (end - start).TotalMinutes * PixelsPerMinute;
                 blocks.Add(new EpgBlock { Channel = ch, Programme = prog, Left = left, Width = width });
             }
             return blocks;
