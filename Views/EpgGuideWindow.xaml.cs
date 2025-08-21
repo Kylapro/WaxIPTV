@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -23,6 +25,9 @@ namespace WaxIPTV.Views
         private readonly DateTimeOffset _startUtc;
         private readonly DateTimeOffset _endUtc;
 
+        private readonly ObservableCollection<ChannelEpgRow> _rows = new();
+        private CancellationTokenSource? _loadCts;
+
         private string _searchTerm = string.Empty;
         private string? _selectedGroup;
         private Channel? _selectedChannel;
@@ -39,6 +44,7 @@ namespace WaxIPTV.Views
             _startUtc = DateTimeOffset.UtcNow;
             _endUtc = _startUtc.AddHours(12);
 
+            ChannelItems.ItemsSource = _rows;
             PopulateGroupFilter();
             BuildTimelineHeader();
             ApplyFilter();
@@ -51,9 +57,9 @@ namespace WaxIPTV.Views
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .OrderBy(g => g)
                 .ToList();
-            groups.Insert(0, "All");
             GroupFilter.ItemsSource = groups;
             GroupFilter.SelectedIndex = 0;
+            _selectedGroup = groups.FirstOrDefault();
         }
 
         private void BuildTimelineHeader()
@@ -84,7 +90,7 @@ namespace WaxIPTV.Views
             ApplyFilter();
         }
 
-        private void ApplyFilter()
+        private async void ApplyFilter()
         {
             IEnumerable<Channel> filtered = _channels;
 
@@ -97,21 +103,44 @@ namespace WaxIPTV.Views
                     (!string.IsNullOrEmpty(ch.Group) && ch.Group.Contains(term, StringComparison.OrdinalIgnoreCase)));
             }
 
-            if (!string.IsNullOrWhiteSpace(_selectedGroup) && !string.Equals(_selectedGroup, "All", StringComparison.OrdinalIgnoreCase))
+            if (!string.IsNullOrWhiteSpace(_selectedGroup))
             {
                 var sel = _selectedGroup;
                 filtered = filtered.Where(ch => string.Equals(ch.Group ?? "Ungrouped", sel, StringComparison.OrdinalIgnoreCase));
             }
 
-            var rows = filtered
-                .Select(ch => new ChannelEpgRow
-                {
-                    Channel = ch,
-                    Blocks = BuildBlocks(ch)
-                })
-                .ToList();
+            var list = filtered.ToList();
+            _loadCts?.Cancel();
+            _loadCts = new CancellationTokenSource();
+            _rows.Clear();
+            try
+            {
+                await LoadRowsAsync(list, _loadCts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                // Ignore cancellations when the filter changes
+            }
+        }
 
-            ChannelItems.ItemsSource = rows;
+        private async Task LoadRowsAsync(List<Channel> channels, CancellationToken token)
+        {
+            const int batchSize = 20;
+            for (int i = 0; i < channels.Count; i += batchSize)
+            {
+                token.ThrowIfCancellationRequested();
+                var batch = channels
+                    .Skip(i)
+                    .Take(batchSize)
+                    .Select(ch => new ChannelEpgRow
+                    {
+                        Channel = ch,
+                        Blocks = BuildBlocks(ch)
+                    });
+                foreach (var row in batch)
+                    _rows.Add(row);
+                await Task.Delay(100, token);
+            }
         }
 
         private List<EpgBlock> BuildBlocks(Channel ch)
