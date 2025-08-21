@@ -1,6 +1,7 @@
 <Window x:Class="WaxIPTV.Views.EpgGuideWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:WaxIPTV.Views"
         Title="EPG Guide"
         Height="600"
         Width="1000"
@@ -47,10 +48,10 @@
 
         <!-- Timeline header showing hour markers -->
         <ScrollViewer DockPanel.Dock="Top" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Hidden" Margin="8,0,8,4">
-            <ItemsControl x:Name="TimelineHeader">
+            <ItemsControl x:Name="TimelineHeader" Width="{x:Static local:EpgGuideWindow.TimelineWidth}">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
-                        <Canvas Height="20" Width="720"/>
+                        <Canvas Height="20"/>
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
@@ -78,10 +79,10 @@
                             </StackPanel>
                             <!-- Programme timeline -->
                             <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden">
-                                <ItemsControl ItemsSource="{Binding Blocks}">
+                                <ItemsControl ItemsSource="{Binding Blocks}" Width="{x:Static local:EpgGuideWindow.TimelineWidth}">
                                     <ItemsControl.ItemsPanel>
                                         <ItemsPanelTemplate>
-                                            <Canvas Height="40" Width="720"/>
+                                            <Canvas Height="40"/>
                                         </ItemsPanelTemplate>
                                     </ItemsControl.ItemsPanel>
                                     <ItemsControl.ItemTemplate>
