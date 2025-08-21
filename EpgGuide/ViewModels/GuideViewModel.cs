@@ -115,7 +115,7 @@ public sealed class GuideViewModel : INotifyPropertyChanged
         VisibleStartUtc = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute < 30 ? 0 : 30, 0, DateTimeKind.Utc).AddMinutes(-30);
     }
 
-    public void LoadFrom(EpgSnapshot snapshot)
+    public async Task LoadFromAsync(EpgSnapshot snapshot)
     {
         Channels.Clear();
         FilteredChannels.Clear();
@@ -124,6 +124,10 @@ public sealed class GuideViewModel : INotifyPropertyChanged
             .GroupBy(p => p.ChannelTvgId)
             .ToDictionary(g => g.Key, g => g.OrderBy(p => p.StartUtc));
 
+        Groups.Clear();
+        Groups.Add("All");
+
+        int i = 0;
         foreach (var ch in snapshot.Channels)
         {
             var row = new ChannelRow
@@ -142,12 +146,15 @@ public sealed class GuideViewModel : INotifyPropertyChanged
             }
 
             Channels.Add(row);
-        }
+            FilteredChannels.Add(row);
 
-        Groups.Clear();
-        Groups.Add("All");
-        foreach (var g in Channels.Select(c => c.Group).Where(g => !string.IsNullOrWhiteSpace(g)).Distinct().OrderBy(g => g))
-            Groups.Add(g!);
+            if (!string.IsNullOrWhiteSpace(ch.Group) && !Groups.Any(g => string.Equals(g, ch.Group, StringComparison.OrdinalIgnoreCase)))
+                Groups.Add(ch.Group!);
+
+            i++;
+            if (i % 20 == 0)
+                await Task.Yield();
+        }
 
         SelectedGroup = "All";
         ApplyFilters();
