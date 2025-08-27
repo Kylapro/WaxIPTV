@@ -11,7 +11,7 @@
         WindowStartupLocation="CenterOwner">
     <!--
         This window renders a simple EPG guide.  The guide displays a
-        six‑hour timeline for each channel along with basic
+        twelve‑hour timeline for each channel along with basic
         playback controls.  Channels are loaded from the main window
         so that the guide can reuse the same playlist and EPG data.  A
         search bar and group filter enable quick filtering of the
@@ -64,6 +64,38 @@
             </StackPanel>
         </Border>
 
+        <!-- Timeline header showing local times -->
+        <Grid DockPanel.Dock="Top" Margin="8,0,8,4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="200"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Border Grid.Column="0"/>
+            <ScrollViewer Grid.Column="1"
+                          x:Name="TimelineHeaderScroll"
+                          HorizontalScrollBarVisibility="Hidden"
+                          VerticalScrollBarVisibility="Hidden">
+                <ItemsControl x:Name="TimelineHeader">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" IsItemsHost="True"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Width="{Binding Width}"
+                                   BorderBrush="{DynamicResource DividerBrush}"
+                                   BorderThickness="0,0,1,0">
+                                <TextBlock Text="{Binding Label}"
+                                           HorizontalAlignment="Center"
+                                           Foreground="{DynamicResource TextBrush}"/>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Grid>
+
         <!-- Main guide area: list of channels and their programmes -->
         <ScrollViewer HorizontalScrollBarVisibility="Auto"
                       VerticalScrollBarVisibility="Auto"
@@ -86,7 +118,7 @@
                                     <TextBlock Text="{Binding Channel.Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                                 </StackPanel>
                                 <!-- Timeline for this channel -->
-                                <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Hidden">
+                                <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Hidden" ScrollChanged="TimelineScroll_ScrollChanged">
                                     <ItemsControl ItemsSource="{Binding Segments}">
                                         <ItemsControl.ItemsPanel>
                                             <ItemsPanelTemplate>
