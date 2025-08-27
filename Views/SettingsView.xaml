@@ -1,0 +1,20 @@
+<UserControl x:Class="WaxIPTV.Views.SettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d"
+             Height="Auto" Width="Auto">
+    <!--
+        Placeholder view for settings. In a full application you would
+        expose editable fields for selecting mpv or VLC, setting
+        playlist and EPG URLs, and adjusting refresh intervals. This
+        minimal control simply informs the developer where settings
+        controls should be placed.
+    -->
+    <StackPanel Margin="8">
+        <TextBlock Text="Theme JSON (paste and click Apply)" FontWeight="Bold" Margin="0,0,0,4"/>
+        <TextBox x:Name="ThemeJsonEditor" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Height="100"/>
+        <Button Content="Apply Theme" Margin="0,4,0,0" Width="100" HorizontalAlignment="Left" Click="ApplyButton_Click"/>
+    </StackPanel>
+</UserControl>
