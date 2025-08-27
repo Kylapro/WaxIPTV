@@ -205,8 +205,12 @@ namespace WaxIPTV.Views
         /// </summary>
         private void BuildTimelines()
         {
+            // Preserve the current horizontal offset so that rebuilding the timeline
+            // does not reposition the user's scroll.  The guide should only scroll
+            // horizontally in response to user interaction.
+            var horizontalOffset = GuideScroll.HorizontalOffset;
             _timelineStartLocal = DateTimeOffset.Now;
-            BuildTimelineHeader();
+            BuildTimelineHeader(horizontalOffset);
             // Cancel any previously running timeline build and start a new one.  This ensures
             // that only the latest search/group filter takes effect.  Without
             // cancellation, multiple asynchronous builders may compete to update
@@ -214,10 +218,9 @@ namespace WaxIPTV.Views
             _buildCts?.Cancel();
             _buildCts = new System.Threading.CancellationTokenSource();
             var token = _buildCts.Token;
-            _ = BuildTimelinesAsync(token);
+            _ = BuildTimelinesAsync(token, horizontalOffset);
         }
-
-        private void BuildTimelineHeader()
+        private void BuildTimelineHeader(double horizontalOffset)
         {
             var items = new ObservableCollection<TimeHeaderItem>();
             var hourWidth = _minuteWidth * 60.0;
@@ -232,7 +235,7 @@ namespace WaxIPTV.Views
                 current = current.AddHours(1);
             }
             TimelineHeader.ItemsSource = items;
-            TimelineHeaderScroll.ScrollToHorizontalOffset(0);
+            TimelineHeaderScroll.ScrollToHorizontalOffset(horizontalOffset);
         }
 
         /// <summary>
@@ -244,7 +247,7 @@ namespace WaxIPTV.Views
         /// token.  This method must not be awaited on the UI thread; it
         /// schedules its own updates on the Dispatcher.
         /// </summary>
-        private async System.Threading.Tasks.Task BuildTimelinesAsync(System.Threading.CancellationToken token)
+        private async System.Threading.Tasks.Task BuildTimelinesAsync(System.Threading.CancellationToken token, double horizontalOffset)
         {
             try
             {
@@ -277,7 +280,14 @@ namespace WaxIPTV.Views
                 // assign it to the ItemsSource immediately so that the guide
                 // clears any previous content.
                 var collection = new ObservableCollection<ChannelTimelineModel>();
-                await Dispatcher.InvokeAsync(() => TimelineList.ItemsSource = collection, System.Windows.Threading.DispatcherPriority.Background);
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    TimelineList.ItemsSource = collection;
+                    // Restore the preserved horizontal offset so rebuilding the timeline
+                    // does not move the scroll position.
+                    GuideScroll.ScrollToHorizontalOffset(horizontalOffset);
+                    TimelineHeaderScroll.ScrollToHorizontalOffset(horizontalOffset);
+                }, System.Windows.Threading.DispatcherPriority.Background);
 
                 foreach (var ch in filtered)
                 {
