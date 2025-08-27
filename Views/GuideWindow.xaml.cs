@@ -44,17 +44,9 @@ namespace WaxIPTV.Views
         // ScrollViewer of the channel names list (retrieved after loaded)
         private ScrollViewer? _namesScrollViewer;
 
-        // Cancellation token source used to cancel any in-progress guide row
-        // construction when the user changes the search term or selected group.
-        private System.Threading.CancellationTokenSource? _buildRowsCts;
-
         // Precomputed guide rows for all channels.  Each GuideRow contains
-        // the list of programme slots for the current time window.  Use
-        // ObservableCollection so that UI updates automatically when rows
-        // are added incrementally from a background thread.  A second
-        // collection holds only the rows that match the current filter.
-        private readonly System.Collections.ObjectModel.ObservableCollection<GuideRow> _allGuideRows = new();
-        private readonly System.Collections.ObjectModel.ObservableCollection<GuideRow> _filteredRows = new();
+        // the list of programme slots for the current time window.
+        private List<GuideRow> _allGuideRows = new();
 
         public GuideWindow(List<Channel> channels, Dictionary<string, List<Programme>> programmes)
         {
@@ -64,7 +56,7 @@ namespace WaxIPTV.Views
             Loaded += OnLoaded;
         }
 
-        private void OnLoaded(object sender, RoutedEventArgs e)
+        private void OnLoaded(object? sender, RoutedEventArgs e)
         {
             // Populate group filter ComboBox
             var groups = _allChannels
@@ -79,13 +71,13 @@ namespace WaxIPTV.Views
             GroupFilter.SelectedIndex = 0;
             _selectedGroup = "All";
 
-            // Set up the filtered collection as the ItemsSource for both lists so that
-            // rows added later will appear automatically.  This is required prior
-            // to starting the asynchronous build.  Draw the timeline header and
-            // then begin constructing rows according to the current filters.
-            ChannelNamesList.ItemsSource = _filteredRows;
-            TimelineItemsControl.ItemsSource = _filteredRows;
-            StartBuildRows();
+            // Build initial guide rows
+            // Precompute all guide rows once; we'll filter these instead of
+            // rebuilding programme slots on every search or group change.  The
+            // time window is anchored at the moment of loading.
+            _allGuideRows = BuildGuideRows(_allChannels);
+
+            ApplyFilterAndBuildGuide();
 
             // Capture the scroll viewer for the names list so we can sync vertical scrolling
             _namesScrollViewer = FindVisualChild<ScrollViewer>(ChannelNamesList);
@@ -95,28 +87,26 @@ namespace WaxIPTV.Views
         /// Handles group selection changes.  Updates the selected group and
         /// rebuilds the guide rows.
         /// </summary>
-        private void GroupFilter_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private void GroupFilter_SelectionChanged(object? sender, SelectionChangedEventArgs e)
         {
             _selectedGroup = GroupFilter.SelectedItem as string;
-            // Rebuild rows for the selected group
-            StartBuildRows();
+            ApplyFilterAndBuildGuide();
         }
 
         /// <summary>
         /// Handles search text changes.  Updates the search term and
         /// rebuilds the guide rows.
         /// </summary>
-        private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
+        private void SearchBox_TextChanged(object? sender, TextChangedEventArgs e)
         {
             _searchTerm = SearchBox.Text?.Trim() ?? string.Empty;
-            // Rebuild rows for the new search term
-            StartBuildRows();
+            ApplyFilterAndBuildGuide();
         }
 
         /// <summary>
         /// Clears the search box when the clear button is clicked.
         /// </summary>
-        private void ClearSearch_Click(object sender, RoutedEventArgs e)
+        private void ClearSearch_Click(object? sender, RoutedEventArgs e)
         {
             SearchBox.Text = string.Empty;
         }
@@ -127,7 +117,7 @@ namespace WaxIPTV.Views
         /// in the timeline.  This method is reserved for future use; currently
         /// no row highlighting is implemented.
         /// </summary>
-        private void ChannelNamesList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private void ChannelNamesList_SelectionChanged(object? sender, SelectionChangedEventArgs e)
         {
             // No-op for now.  Could be used to scroll timeline to the selected row.
         }
@@ -137,7 +127,7 @@ namespace WaxIPTV.Views
         /// names list.  When the timeline scrolls vertically, adjust the
         /// vertical offset of the names list accordingly.
         /// </summary>
-        private void TimelineScrollViewer_ScrollChanged(object sender, ScrollChangedEventArgs e)
+        private void TimelineScrollViewer_ScrollChanged(object? sender, ScrollChangedEventArgs e)
         {
             if (e.VerticalChange != 0 && _namesScrollViewer != null)
             {
@@ -149,7 +139,7 @@ namespace WaxIPTV.Views
         /// Called when a programme block is clicked.  Determines the
         /// associated channel and raises the ChannelSelected event.
         /// </summary>
-        private void ProgrammeSlot_Click(object sender, MouseButtonEventArgs e)
+        private void ProgrammeSlot_Click(object? sender, MouseButtonEventArgs e)
         {
             if (sender is Border border && border.DataContext is ProgrammeSlot slot)
             {
@@ -165,7 +155,7 @@ namespace WaxIPTV.Views
         /// allows selecting a channel even when there are no programme
         /// blocks in the timeline (e.g., when the EPG is empty).
         /// </summary>
-        private void ChannelRow_Click(object sender, MouseButtonEventArgs e)
+        private void ChannelRow_Click(object? sender, MouseButtonEventArgs e)
         {
             // The DataContext of the stack panel is the GuideRow for the channel
             if (sender is FrameworkElement element && element.DataContext is GuideRow row)
@@ -181,10 +171,7 @@ namespace WaxIPTV.Views
         /// </summary>
         private void ApplyFilterAndBuildGuide()
         {
-            // Rebuild the filtered view based on the current search and group
-            // criteria.  Clear the existing filtered collection and add back
-            // rows from the master collection that match the predicate.
-            _filteredRows.Clear();
+            // Filter precomputed guide rows instead of rebuilding slots each time
             IEnumerable<GuideRow> filtered = _allGuideRows;
             // Filter by search term across name, tvg-id and group (case-insensitive)
             if (!string.IsNullOrEmpty(_searchTerm))
@@ -201,12 +188,13 @@ namespace WaxIPTV.Views
                 var group = _selectedGroup;
                 filtered = filtered.Where(row => string.Equals(row.Channel.Group, group, StringComparison.OrdinalIgnoreCase));
             }
-            foreach (var row in filtered)
-            {
-                _filteredRows.Add(row);
-            }
-            // Redraw the timeline header to ensure the time labels reflect
-            // the current time window when the filter changes.
+            var guideRows = filtered.ToList();
+
+            // Bind to UI
+            ChannelNamesList.ItemsSource = guideRows;
+            TimelineItemsControl.ItemsSource = guideRows;
+
+            // Draw header labels based on current time window
             DrawTimelineHeader();
         }
 
@@ -309,230 +297,6 @@ namespace WaxIPTV.Views
         }
 
         /// <summary>
-        /// Determines whether a given guide row matches the current
-        /// search term and selected group.  This helper is used when
-        /// building guide rows asynchronously so that only matching
-        /// rows are displayed as they are generated.
-        /// </summary>
-        /// <param name="row">The guide row to test.</param>
-        /// <returns>True if the row satisfies the current filters; otherwise false.</returns>
-        private bool RowMatchesFilter(GuideRow row)
-        {
-            // Apply search filter: match on channel name, tvg-id or group
-            if (!string.IsNullOrEmpty(_searchTerm))
-            {
-                var term = _searchTerm;
-                bool nameMatch = !string.IsNullOrEmpty(row.ChannelName) && row.ChannelName.Contains(term, StringComparison.OrdinalIgnoreCase);
-                bool idMatch = !string.IsNullOrEmpty(row.Channel.TvgId) && row.Channel.TvgId.Contains(term, StringComparison.OrdinalIgnoreCase);
-                bool groupMatch = !string.IsNullOrEmpty(row.Channel.Group) && row.Channel.Group.Contains(term, StringComparison.OrdinalIgnoreCase);
-                if (!(nameMatch || idMatch || groupMatch))
-                {
-                    return false;
-                }
-            }
-            // Apply group filter: skip if not in selected group (other than "All")
-            if (!string.IsNullOrWhiteSpace(_selectedGroup) && !string.Equals(_selectedGroup, "All", StringComparison.OrdinalIgnoreCase))
-            {
-                var group = _selectedGroup;
-                if (!string.Equals(row.Channel.Group, group, StringComparison.OrdinalIgnoreCase))
-                {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        /// <summary>
-        /// Determines whether a channel matches the current search term and
-        /// group filter without constructing the full guide row.  This is
-        /// used before building programme slots so that only channels that
-        /// pass the filter are processed.  This helps improve startup
-        /// performance because we avoid unnecessary work for channels in
-        /// other groups or that don't match the search.
-        /// </summary>
-        /// <param name="ch">The channel to test.</param>
-        /// <returns>True if the channel satisfies the current filters; otherwise false.</returns>
-        private bool ChannelMatchesFilter(Channel ch)
-        {
-            // Apply search filter: match on channel name, tvg-id or group
-            if (!string.IsNullOrEmpty(_searchTerm))
-            {
-                var term = _searchTerm;
-                bool nameMatch = !string.IsNullOrEmpty(ch.Name) && ch.Name.Contains(term, StringComparison.OrdinalIgnoreCase);
-                bool idMatch = !string.IsNullOrEmpty(ch.TvgId) && ch.TvgId.Contains(term, StringComparison.OrdinalIgnoreCase);
-                bool groupMatch = !string.IsNullOrEmpty(ch.Group) && ch.Group.Contains(term, StringComparison.OrdinalIgnoreCase);
-                if (!(nameMatch || idMatch || groupMatch))
-                {
-                    return false;
-                }
-            }
-            // Apply group filter
-            if (!string.IsNullOrWhiteSpace(_selectedGroup) && !string.Equals(_selectedGroup, "All", StringComparison.OrdinalIgnoreCase))
-            {
-                if (!string.Equals(ch.Group, _selectedGroup, StringComparison.OrdinalIgnoreCase))
-                {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        /// <summary>
-        /// Builds a guide row for a single channel.  This method mirrors
-        /// the logic of <see cref="BuildGuideRows(List{Channel})"/> but for
-        /// a single channel.  It calculates the programme slots within
-        /// the current time window and loads the channel icon.  This
-        /// method may be called from a background thread; however it
-        /// freezes any image resources so that they can be safely used on
-        /// the UI thread.
-        /// </summary>
-        /// <param name="ch">The channel to build a row for.</param>
-        /// <returns>A populated <see cref="GuideRow"/> for the channel.</returns>
-        private GuideRow BuildGuideRow(Channel ch)
-        {
-            var row = new GuideRow
-            {
-                Channel = ch,
-                ChannelName = ch.Name,
-                ChannelIcon = LoadIcon(ch.Logo),
-                ProgrammeSlots = new List<ProgrammeSlot>()
-            };
-            // Determine time window in local time
-            var windowStartLocal = DateTimeOffset.Now;
-            var windowEndLocal = windowStartLocal + _windowDuration;
-            var totalMinutes = _windowDuration.TotalMinutes;
-            var pixelsPerMinute = _timelineWidth / totalMinutes;
-            // Populate programme slots
-            if (_programmes.TryGetValue(ch.Id, out var progs))
-            {
-                foreach (var prog in progs)
-                {
-                    var progStart = prog.StartUtc.ToLocalTime();
-                    var progEnd = prog.EndUtc.ToLocalTime();
-                    if (progEnd <= windowStartLocal || progStart >= windowEndLocal)
-                        continue;
-                    var segStart = progStart < windowStartLocal ? windowStartLocal : progStart;
-                    var segEnd = progEnd > windowEndLocal ? windowEndLocal : progEnd;
-                    var offsetMinutes = (segStart - windowStartLocal).TotalMinutes;
-                    var durationMinutes = (segEnd - segStart).TotalMinutes;
-                    var offsetPx = offsetMinutes * pixelsPerMinute;
-                    var widthPx = Math.Max(durationMinutes * pixelsPerMinute, 4);
-                    var slot = new ProgrammeSlot
-                    {
-                        Channel = ch,
-                        Title = prog.Title,
-                        Start = prog.StartUtc,
-                        End = prog.EndUtc,
-                        Offset = offsetPx,
-                        Width = widthPx,
-                        ToolTip = $"{prog.Title}\\n{prog.StartUtc.ToLocalTime():HH:mm} - {prog.EndUtc.ToLocalTime():HH:mm}"
-                    };
-                    row.ProgrammeSlots.Add(slot);
-                }
-            }
-            return row;
-        }
-
-        /// <summary>
-        /// Starts (or restarts) asynchronous construction of guide rows
-        /// according to the current search term and selected group.  Any
-        /// ongoing build operation is cancelled.  The guide rows and
-        /// filtered collections are cleared, and new rows are added one
-        /// at a time on the UI thread.  The operation yields periodically
-        /// to maintain UI responsiveness.  Only channels that match the
-        /// current filters are processed.
-        /// </summary>
-        private void StartBuildRows()
-        {
-            // Cancel any in-progress build
-            _buildRowsCts?.Cancel();
-            _buildRowsCts = new System.Threading.CancellationTokenSource();
-            var token = _buildRowsCts.Token;
-
-            // Determine which channels match the current filters.  We precompute
-            // this list so that we can report accurate progress while
-            // constructing guide rows.  Filtering ahead of time avoids
-            // unnecessary work for channels outside the selected group or
-            // search term.
-            var matchingChannels = _allChannels.Where(ChannelMatchesFilter).ToList();
-            int totalChannels = matchingChannels.Count;
-
-            // Initialize the progress indicator on the UI thread.  If there are
-            // no channels to display, hide the panel immediately.  Otherwise,
-            // reset the progress bar and show the loading panel.
-            Dispatcher.Invoke(() =>
-            {
-                if (totalChannels > 0)
-                {
-                    GuideEpgLoadingPanel.Visibility = Visibility.Visible;
-                    GuideProgressBar.Minimum = 0;
-                    GuideProgressBar.Maximum = totalChannels;
-                    GuideProgressBar.Value = 0;
-                    GuideLoadingLabel.Text = $"Loading EPG... (0/{totalChannels})";
-                }
-                else
-                {
-                    GuideEpgLoadingPanel.Visibility = Visibility.Collapsed;
-                    GuideLoadingLabel.Text = string.Empty;
-                }
-            });
-
-            // Clear existing rows and draw header on UI thread
-            Dispatcher.Invoke(() =>
-            {
-                _allGuideRows.Clear();
-                _filteredRows.Clear();
-                DrawTimelineHeader();
-            });
-
-            // Kick off background task to build guide rows.  As each row is
-            // constructed, update the progress bar and status message on the
-            // UI thread.  Use the cancellation token to abort if a new
-            // build is requested (e.g., when the user changes the filter).
-            _ = Task.Run(async () =>
-            {
-                int processed = 0;
-                foreach (var ch in matchingChannels)
-                {
-                    if (token.IsCancellationRequested)
-                        break;
-                    var row = BuildGuideRow(ch);
-                    await Dispatcher.InvokeAsync(() =>
-                    {
-                        _allGuideRows.Add(row);
-                        _filteredRows.Add(row);
-                        processed++;
-                        // Update progress bar and label
-                        GuideProgressBar.Value = processed;
-                        GuideLoadingLabel.Text = $"Loading EPG... ({processed}/{totalChannels})";
-                    });
-                    // Periodically yield to keep the UI responsive
-                    if (processed % 20 == 0)
-                    {
-                        try
-                        {
-                            await Task.Delay(1, token);
-                        }
-                        catch (TaskCanceledException)
-                        {
-                            break;
-                        }
-                    }
-                }
-                // Hide the loading panel when done or cancelled.  Use
-                // Dispatcher to ensure updates run on the UI thread.
-                await Dispatcher.InvokeAsync(() =>
-                {
-                    if (!token.IsCancellationRequested)
-                    {
-                        GuideLoadingLabel.Text = totalChannels > 0 ? "EPG loaded" : string.Empty;
-                    }
-                    GuideEpgLoadingPanel.Visibility = Visibility.Collapsed;
-                });
-            });
-        }
-
-        /// <summary>
         /// Helper to load an icon from a URL.  Returns null if loading
         /// fails or the URL is empty.  Icons are cached in memory via
         /// BitmapImage.  This method catches all exceptions and returns
@@ -550,67 +314,25 @@ namespace WaxIPTV.Views
             }
             try
             {
-                // Support base64 data URIs
-                if (url.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
-                {
-                    var commaIndex = url.IndexOf(',');
-                    if (commaIndex > 0)
-                    {
-                        var base64Data = url[(commaIndex + 1)..];
-                        var bytes = Convert.FromBase64String(base64Data);
-                        using var ms = new System.IO.MemoryStream(bytes);
-                        var bitmap = new BitmapImage();
-                        bitmap.BeginInit();
-                        bitmap.StreamSource = ms;
-                        bitmap.DecodePixelWidth = 32;
-                        bitmap.DecodePixelHeight = 32;
-                        bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                        bitmap.CreateOptions = BitmapCreateOptions.IgnoreImageCache;
-                        bitmap.EndInit();
-                        bitmap.Freeze();
-                        _iconCache[url] = bitmap;
-                        return bitmap;
-                    }
-                }
-                // Handle local file paths
-                if (System.IO.File.Exists(url))
-                {
-                    var bitmap = new BitmapImage();
-                    bitmap.BeginInit();
-                    bitmap.UriSource = new Uri(url, UriKind.Absolute);
-                    bitmap.DecodePixelWidth = 32;
-                    bitmap.DecodePixelHeight = 32;
-                    bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                    bitmap.CreateOptions = BitmapCreateOptions.IgnoreImageCache;
-                    bitmap.EndInit();
-                    bitmap.Freeze();
-                    _iconCache[url] = bitmap;
-                    return bitmap;
-                }
-                // Replace spaces with %20 for HTTP/HTTPS URIs
-                var candidate = url.Contains(' ') ? url.Replace(" ", "%20") : url;
-                if (Uri.TryCreate(candidate, UriKind.Absolute, out var uri))
-                {
-                    var bitmap = new BitmapImage();
-                    bitmap.BeginInit();
-                    bitmap.UriSource = uri;
-                    bitmap.DecodePixelWidth = 32;
-                    bitmap.DecodePixelHeight = 32;
-                    bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                    bitmap.CreateOptions = BitmapCreateOptions.IgnoreImageCache;
-                    bitmap.EndInit();
-                    bitmap.Freeze();
-                    _iconCache[url] = bitmap;
-                    return bitmap;
-                }
+                var uri = new Uri(url);
+                var bitmap = new BitmapImage();
+                bitmap.BeginInit();
+                bitmap.UriSource = uri;
+                bitmap.DecodePixelWidth = 32;
+                bitmap.DecodePixelHeight = 32;
+                bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                bitmap.CreateOptions = BitmapCreateOptions.IgnoreImageCache;
+                bitmap.EndInit();
+                bitmap.Freeze();
+                _iconCache[url] = bitmap;
+                return bitmap;
             }
             catch
             {
-                // ignored
+                // Cache the failure as null to avoid repeated attempts
+                _iconCache[url] = null;
+                return null;
             }
-            // Cache the failure as null to avoid repeated attempts
-            _iconCache[url] = null;
-            return null;
         }
 
         /// <summary>

@@ -1029,10 +1029,14 @@ namespace WaxIPTV.Views
         /// </summary>
         private void EpgGuide_Click(object sender, RoutedEventArgs e)
         {
-            var guide = new EpgGuideWindow(_channels, _programmes, PlayChannelFromGuideAsync)
+            // Use the older GuideWindow implementation instead of the removed
+            // EpgGuideWindow.  Hook the ChannelSelected event so that when
+            // the user clicks a programme, playback starts on the selected channel.
+            var guide = new GuideWindow(_channels, _programmes)
             {
                 Owner = this
             };
+            guide.ChannelSelected += async (_, ch) => await PlayChannelFromGuideAsync(ch);
             guide.Show();
         }
 
