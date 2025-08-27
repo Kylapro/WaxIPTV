@@ -687,11 +687,12 @@ namespace WaxIPTV.Views
                     });
                     programmesDict = EpgMapper.MapProgrammesInBatches(programmeStream, _channels, channelNames, 200, overrides, progress, programmesDict);
                     AppLog.Logger.Information("Mapping {ProgCount} programmes", totalProgrammes);
-                    // Trim programmes beyond 7 days to limit memory usage
-                    var cutoff = DateTimeOffset.UtcNow.AddDays(7);
+                    // Trim programmes outside the next 6 hours to limit memory usage
+                    var now = DateTimeOffset.UtcNow;
+                    var cutoff = now.AddHours(6);
                     foreach (var kv in programmesDict)
                     {
-                        kv.Value.RemoveAll(p => p.EndUtc > cutoff);
+                        kv.Value.RemoveAll(p => p.EndUtc <= now || p.StartUtc >= cutoff);
                     }
                     _epgLoadedAt = DateTimeOffset.UtcNow;
 

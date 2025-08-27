@@ -19,7 +19,7 @@ namespace WaxIPTV.Views
     /// </summary>
     public partial class EpgGuideWindow : Window
     {
-        private const int TimelineHours = 12;
+        private const int TimelineHours = 6;
         private const double PixelsPerMinute = 2.0;
         private const double MinBlockWidth = 20.0;
         public static readonly double TimelineWidth = Math.Round(TimelineHours * 60 * PixelsPerMinute);
