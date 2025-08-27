@@ -18,8 +18,9 @@ namespace WaxIPTV.Services
         // Regular expression used to extract key="value" pairs from the EXTINF line
         // Use a verbatim string (prefixed with @) for the regex pattern.  When using verbatim
         // strings, double quotes must be doubled to escape them.  This pattern captures
-        // key="value" pairs such as tvg-id="channel-id" and tvg-logo="logo.png".
-        private static readonly Regex Attr = new(@"(\w+(?:-\w+)*)=""([^""]*)""", RegexOptions.Compiled);
+        // key="value" pairs such as tvg-id="channel-id" and tvg-logo="logo.png".  Some
+        // playlists use single quotes around attribute values, so support both forms.
+        private static readonly Regex Attr = new(@"(\w+(?:-\w+)*)=(?:""([^""]*)""|'([^']*)')", RegexOptions.Compiled);
 
         /// <summary>
         /// Parses a raw M3U playlist and returns a list of channels.  The parser
@@ -45,10 +46,15 @@ namespace WaxIPTV.Services
                     meta = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                     headers = null;
                     foreach (Match m in Attr.Matches(line))
-                        meta[m.Groups[1].Value] = m.Groups[2].Value;
+                    {
+                        var value = m.Groups[2].Success ? m.Groups[2].Value : m.Groups[3].Value;
+                        meta[m.Groups[1].Value] = value;
+                    }
 
-                    // Extract the display name following the comma
-                    var comma = line.IndexOf(',');
+                    // Extract the display name following the last comma, which avoids
+                    // accidentally including additional metadata in poorly formatted
+                    // playlists that repeat key/value pairs after the first comma.
+                    var comma = line.LastIndexOf(',');
                     title = comma >= 0 ? line[(comma + 1)..].Trim() : "Channel";
                 }
                 else if (meta is not null && line.StartsWith("#EXTGRP", StringComparison.OrdinalIgnoreCase))
