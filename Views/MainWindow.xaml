@@ -92,11 +92,7 @@
                     <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" Margin="0,0,8,0">
                         <TextBlock Text="Group" VerticalAlignment="Center" Margin="0,0,6,0"/>
                         <ComboBox x:Name="GroupFilter" Width="160"
-                                  SelectionChanged="GroupFilter_SelectionChanged"
-                                  Background="{DynamicResource DropdownBrush}"
-                                  Foreground="{DynamicResource TextBrush}"
-                                  BorderBrush="{DynamicResource DividerBrush}"
-                                  BorderThickness="1"/>
+                                  SelectionChanged="GroupFilter_SelectionChanged"/>
                     </StackPanel>
                     <!-- EPG counters: displays how many channels and programmes were loaded and mapped.
                          Placed on the right side of the filter bar.  Hidden until EPG is loaded. -->

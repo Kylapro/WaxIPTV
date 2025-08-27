@@ -83,7 +83,6 @@
                                VerticalAlignment="Center"/>
                     <ComboBox Grid.Row="0" Grid.Column="1"
                               Margin="0,0,8,8"
-                              Background="{DynamicResource DropdownBrush}"
                               ItemsSource="{Binding PlayerOptions}"
                               SelectedItem="{Binding Player, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
@@ -309,7 +308,6 @@
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="Font" Width="110" VerticalAlignment="Center"/>
                                     <ComboBox Width="220"
-                                              Background="{DynamicResource DropdownBrush}"
                                               ItemsSource="{Binding SystemFonts}"
                                               SelectedItem="{Binding SelectedFontFamily}"
                                               DisplayMemberPath="Source"/>
