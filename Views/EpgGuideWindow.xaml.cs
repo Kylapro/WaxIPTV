@@ -130,8 +130,8 @@ namespace WaxIPTV.Views
 
         private async Task LoadRowsAsync(List<Channel> channels, CancellationToken token)
         {
-            // Load channels one at a time with a long delay between each to
-            // reduce CPU usage when populating the EPG guide.
+            // Load channels one at a time with only a small delay so the UI remains
+            // responsive without taking an excessively long time to populate.
             foreach (var ch in channels)
             {
                 token.ThrowIfCancellationRequested();
@@ -141,7 +141,7 @@ namespace WaxIPTV.Views
                     Blocks = BuildBlocks(ch)
                 };
                 _rows.Add(row);
-                await Task.Delay(1000, token); // load very slowly
+                await Task.Delay(10, token); // yield briefly to UI thread
             }
         }
 
