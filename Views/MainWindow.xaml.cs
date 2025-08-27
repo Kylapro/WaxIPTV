@@ -137,13 +137,13 @@ namespace WaxIPTV.Views
         }
 
         /// <summary>
-        /// Reloads channels and EPG data from the current settings.  This
+        /// Reloads channels and optionally EPG data from the current settings.  This
         /// method can be invoked after the user saves changes in the
         /// settings dialog.  It clears the existing collections and
         /// repopulates them from the latest configuration.  Because it
         /// performs file I/O, it is implemented asynchronously.
         /// </summary>
-        public async System.Threading.Tasks.Task LoadFromSettingsAsync()
+        public async System.Threading.Tasks.Task LoadFromSettingsAsync(bool loadEpg = true)
         {
             AppLog.Logger.Information("Loading configuration and data");
             // Cancel any pending EPG refresh loop before reloading
@@ -173,9 +173,10 @@ namespace WaxIPTV.Views
             bool hasPlayer = _player != null;
             PlayButton.IsEnabled = PauseButton.IsEnabled = StopButton.IsEnabled = hasPlayer;
 
-            // Remember the current playlist and EPG keys so that future calls can detect changes.
+            // Remember the current playlist key and, if reloading the EPG, the EPG key as well
             _lastPlaylistKey = KeyFor(settings.PlaylistUrl);
-            _lastEpgKey = KeyFor(settings.XmltvUrl);
+            if (loadEpg)
+                _lastEpgKey = KeyFor(settings.XmltvUrl);
 
             // Asynchronously load channels
             await LoadChannelsAsync(settings.PlaylistUrl);
@@ -188,12 +189,15 @@ namespace WaxIPTV.Views
             // selected group (initially "All").
             PopulateGroupFilterAndApply();
 
-            // Load the EPG with force so that the new playlist and EPG are fully mapped.  This
-            // initial load should bypass any refresh window and always parse and map the
-            // programmes.  Subsequent reloads will be controlled by the EPG refresh loop or
-            // user actions.
-            await LoadEpgAsync(settings.XmltvUrl, settings.EpgRefreshHours, force: true);
-            AppLog.Logger.Information("EPG loaded with {ProgrammeCount} programmes", _programmes.Sum(kv => kv.Value.Count));
+            if (loadEpg)
+            {
+                // Load the EPG with force so that the new playlist and EPG are fully mapped.  This
+                // initial load should bypass any refresh window and always parse and map the
+                // programmes.  Subsequent reloads will be controlled by the EPG refresh loop or
+                // user actions.
+                await LoadEpgAsync(settings.XmltvUrl, settings.EpgRefreshHours, force: true);
+                AppLog.Logger.Information("EPG loaded with {ProgrammeCount} programmes", _programmes.Sum(kv => kv.Value.Count));
+            }
 
             // Update the UI for the first selection if any
             if (_channels.Count > 0)
@@ -643,7 +647,7 @@ namespace WaxIPTV.Views
 
                     // Pass any manual EPG ID aliases from settings to the mapper.  These aliases
                     // allow users to map playlist channel names to specific XMLTV IDs when
-                    // automatic or fuzzy matching fails.  The aliases dictionary is copied to
+                    // automatic matching fails.  The aliases dictionary is copied to
                     // ensure case-insensitive keys.
                     Dictionary<string, string>? overrides = null;
                     try
@@ -663,7 +667,7 @@ namespace WaxIPTV.Views
 
                     // Map the programmes to channels using the batched mapper. The stream
                     // enumerates lazily, keeping memory usage low when handling large EPGs.
-                    var progress = new Progress<int>(count =>
+                    var progress = new SynchronousProgress<int>(count =>
                     {
                         try
                         {
@@ -672,13 +676,14 @@ namespace WaxIPTV.Views
                                 if (MainEpgLoadingLabel != null)
                                     MainEpgLoadingLabel.Text = $"Loading EPG... ({count} programmes)";
                                 // Update now/next display as data becomes available
-                        UpdateNowNextForSelected();
+                                UpdateNowNextForSelected();
                             });
                         }
                         catch
                         {
                             // ignore UI update errors
                         }
+
                     });
                     programmesDict = EpgMapper.MapProgrammesInBatches(programmeStream, _channels, channelNames, 200, overrides, progress, programmesDict);
                     AppLog.Logger.Information("Mapping {ProgCount} programmes", totalProgrammes);
@@ -779,16 +784,7 @@ namespace WaxIPTV.Views
                                 }
                                 else
                                 {
-                                    // Fuzzy match: first display-name normalizing to same string
-                                    var fuzzy = epgNameToId.FirstOrDefault(p => Normalize(p.Key) == norm);
-                                    if (!string.IsNullOrWhiteSpace(fuzzy.Key))
-                                    {
-                                        sw.WriteLine($"- {ch.Name}  suggestion: epgIdAliases[\"{norm}\"] = \"{fuzzy.Value}\"  // matches display-name \"{fuzzy.Key}\"");
-                                    }
-                                    else
-                                    {
-                                        sw.WriteLine($"- {ch.Name}  (no obvious XMLTV match) — check playlist tvg-id/tvg-name vs XMLTV <display-name>");
-                                    }
+                                    sw.WriteLine($"- {ch.Name}  (no obvious XMLTV match) — check playlist tvg-id/tvg-name vs XMLTV <display-name>");
                                 }
                             }
                             sw.WriteLine();
@@ -1029,6 +1025,20 @@ namespace WaxIPTV.Views
         }
 
         /// <summary>
+        /// Opens the EPG guide window displaying the timeline for all channels.
+        /// </summary>
+        private void EpgGuide_Click(object sender, RoutedEventArgs e)
+        {
+            var guide = new EpgGuideWindow(_channels, _programmes, PlayChannelFromGuideAsync)
+            {
+                Owner = this
+            };
+            guide.Show();
+        }
+
+        private System.Threading.Tasks.Task PlayChannelFromGuideAsync(Channel ch) => PlayChannelAsync(ch);
+
+        /// <summary>
         /// Pause button handler.  Toggles pause on the active player.
         /// </summary>
         private async void PauseButton_Click(object sender, RoutedEventArgs e)
@@ -1170,42 +1180,26 @@ namespace WaxIPTV.Views
 
         /// <summary>
         /// Handler for the Settings menu item.  Displays the settings
-        /// dialog; if the user saves changes, reloads the channels and EPG.
+        /// dialog; if the user saves changes, reloads the channels but
+        /// leaves the existing EPG data untouched.  The EPG will refresh
+        /// on its normal interval or when the user manually triggers a
+        /// refresh.
         /// </summary>
         private void SettingsMenu_Click(object sender, RoutedEventArgs e)
         {
             var dlg = new SettingsWindow(_settingsService, _settingsService.Settings);
             if (dlg.ShowDialog() == true)
             {
-                // After saving settings, reload channels and EPG
-                _ = LoadFromSettingsAsync();
+                // After saving settings, reload channels without reloading the EPG
+                _ = LoadFromSettingsAsync(loadEpg: false);
             }
         }
 
         /// <summary>
         /// Handler for the EPG Guide menu item.  Opens a new guide window
         /// displaying the programme guide for all channels.  Passes the
-        /// current channels and programmes to the guide and subscribes
-        /// to its ChannelSelected event so that clicking a programme
-        /// triggers playback via PlayChannelAsync.
+        /// current channels and programmes to the guide.
         /// </summary>
-        private void GuideMenu_Click(object sender, RoutedEventArgs e)
-        {
-            if (_channels == null || _channels.Count == 0)
-            {
-                MessageBox.Show("No channels are loaded yet.", "EPG Guide", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
-            var guide = new GuideWindow(_channels, _programmes);
-            guide.Owner = this;
-            guide.ChannelSelected += async (_, ch) =>
-            {
-                await PlayChannelAsync(ch);
-            };
-            guide.Show();
-        }
-
         /// <summary>
         /// Handler for the Exit menu item.  Closes the main window,
         /// shutting down the application.
@@ -1248,6 +1242,13 @@ namespace WaxIPTV.Views
             // Now/Next for the currently selected channel.
             await LoadEpgAsync(s.XmltvUrl, s.EpgRefreshHours, force: true);
             UpdateNowNextForSelected();
+        }
+
+        private sealed class SynchronousProgress<T> : IProgress<T>
+        {
+            private readonly Action<T> _action;
+            public SynchronousProgress(Action<T> action) => _action = action;
+            public void Report(T value) => _action(value);
         }
     }
 }

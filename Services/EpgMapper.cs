@@ -190,36 +190,6 @@ namespace WaxIPTV.Services
                             }
                         }
 
-                        // 5) If still no match, attempt a fuzzy match based on Levenshtein similarity
-                        if (match == null)
-                        {
-                            var fuzzy = FindBestChannel(displayName, channelsByNormName);
-                            if (fuzzy != null)
-                            {
-                                match = fuzzy;
-                                // As above, update the TVG ID to the XMLTV channel id for consistency
-                                var normF = NormalizeName(displayName);
-                                if (!string.IsNullOrEmpty(prog.ChannelId) && !string.Equals(fuzzy.TvgId, prog.ChannelId, StringComparison.OrdinalIgnoreCase))
-                                {
-                                    var updated = fuzzy with { TvgId = prog.ChannelId };
-                                    channels[channelIndex[fuzzy.Id]] = updated;
-                                    // update in channelsByNormName list for this normalised key
-                                    if (channelsByNormName.TryGetValue(normF, out var listF))
-                                    {
-                                        var idxF = listF.IndexOf(fuzzy);
-                                        if (idxF >= 0) listF[idxF] = updated;
-                                    }
-                                    // update in tvg-name dictionary if tvg-name present
-                                    if (channelsByNormTvgName.TryGetValue(normF, out var listT))
-                                    {
-                                        var idxT = listT.IndexOf(fuzzy);
-                                        if (idxT >= 0) listT[idxT] = updated;
-                                    }
-                                    channelsByTvgId[prog.ChannelId] = updated;
-                                    match = updated;
-                                }
-                            }
-                        }
                     }
                     if (match != null)
                     {
@@ -237,7 +207,10 @@ namespace WaxIPTV.Services
             }
 
             foreach (var list in result.Values)
+            {
                 list.Sort((a, b) => a.StartUtc.CompareTo(b.StartUtc));
+                CleanOverlaps(list);
+            }
 
             AppLog.Logger.Information("Mapped programmes for {ChannelCount} channels", result.Count);
             return result;
@@ -285,88 +258,44 @@ namespace WaxIPTV.Services
         }
 
         /// <summary>
-        /// Computes the Levenshtein distance between two strings.  This value
-        /// represents the number of single-character edits (insertions,
-        /// deletions or substitutions) required to transform one string into
-        /// the other.  The implementation is iterative to avoid recursion
-        /// overhead and handles empty strings gracefully.
+        /// Cleans a list of programmes by trimming or removing overlaps and
+        /// merging adjacent entries that share the same title and description.
+        /// Assumes the list is already sorted by start time.
         /// </summary>
-        private static int LevenshteinDistance(string s, string t)
+        private static void CleanOverlaps(List<Programme> programmes)
         {
-            if (string.IsNullOrEmpty(s)) return string.IsNullOrEmpty(t) ? 0 : t.Length;
-            if (string.IsNullOrEmpty(t)) return s.Length;
-            var m = s.Length;
-            var n = t.Length;
-            var d = new int[m + 1, n + 1];
-            for (int i = 0; i <= m; i++) d[i, 0] = i;
-            for (int j = 0; j <= n; j++) d[0, j] = j;
-            for (int i = 1; i <= m; i++)
-            {
-                var si = s[i - 1];
-                for (int j = 1; j <= n; j++)
-                {
-                    var cost = si == t[j - 1] ? 0 : 1;
-                    d[i, j] = Math.Min(
-                        Math.Min(d[i - 1, j] + 1,    // deletion
-                                 d[i, j - 1] + 1),    // insertion
-                        d[i - 1, j - 1] + cost        // substitution
-                    );
-                }
-            }
-            return d[m, n];
-        }
+            if (programmes.Count < 2)
+                return;
 
-        /// <summary>
-        /// Computes a similarity score between two strings using the
-        /// Levenshtein distance.  The score is 1.0 for identical strings
-        /// and approaches 0.0 as they diverge.  It is calculated as
-        /// 1 - (distance / maxLength).  When both strings are empty,
-        /// the score is 1.0.  When only one is empty, the score is 0.0.
-        /// </summary>
-        private static double Similarity(string a, string b)
-        {
-            if (string.IsNullOrEmpty(a) && string.IsNullOrEmpty(b)) return 1.0;
-            if (string.IsNullOrEmpty(a) || string.IsNullOrEmpty(b)) return 0.0;
-            var dist = LevenshteinDistance(a, b);
-            var maxLen = Math.Max(a.Length, b.Length);
-            return 1.0 - (double)dist / maxLen;
-        }
-
-        /// <summary>
-        /// Attempts to find the channel from the playlist whose normalised name
-        /// best matches the given XMLTV display name.  A simple similarity
-        /// metric based on the Levenshtein distance is used.  If the best
-        /// match has a score below 0.4, null is returned to avoid spurious
-        /// associations.  This fuzzy matching is only used when no exact
-        /// match is found via TVG ID or normalised names.
-        /// </summary>
-        /// <param name="displayName">The XMLTV channel display name.</param>
-        /// <param name="channelsByNormName">Lookup of normalised playlist channel names to channels.</param>
-        /// <returns>A channel if a sufficiently similar match exists; otherwise null.</returns>
-        private static Channel? FindBestChannel(string displayName, Dictionary<string, List<Channel>> channelsByNormName)
-        {
-            if (string.IsNullOrWhiteSpace(displayName) || channelsByNormName.Count == 0)
-                return null;
-            var normDisplay = NormalizeName(displayName);
-            double bestScore = 0.0;
-            Channel? best = null;
-            foreach (var kv in channelsByNormName)
+            int i = 1;
+            while (i < programmes.Count)
             {
-                var score = Similarity(normDisplay, kv.Key);
-                if (score > bestScore)
+                var prev = programmes[i - 1];
+                var curr = programmes[i];
+
+                if (curr.StartUtc < prev.EndUtc)
                 {
-                    bestScore = score;
-                    // Pick the best candidate from the list: prefer those with a TVG ID and shorter names
-                    var candidates = kv.Value;
-                    var chosen = candidates
-                        .OrderByDescending(c => !string.IsNullOrEmpty(c.TvgId))
-                        .ThenBy(c => c.Name.Length)
-                        .FirstOrDefault();
-                    best = chosen;
+                    if (curr.EndUtc <= prev.EndUtc)
+                    {
+                        programmes.RemoveAt(i);
+                        continue;
+                    }
+                    curr = curr with { StartUtc = prev.EndUtc };
+                    programmes[i] = curr;
                 }
+
+                if (prev.EndUtc == curr.StartUtc &&
+                    string.Equals(prev.Title, curr.Title, StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(prev.Desc, curr.Desc, StringComparison.OrdinalIgnoreCase))
+                {
+                    var merged = prev with { EndUtc = curr.EndUtc };
+                    programmes[i - 1] = merged;
+                    programmes.RemoveAt(i);
+                    continue;
+                }
+
+                i++;
             }
-            // Require a reasonable threshold to avoid incorrect matches
-            return bestScore >= 0.4 ? best : null;
         }
     }
 }

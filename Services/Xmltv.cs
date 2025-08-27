@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Text;
 using System.Xml;
 using WaxIPTV.Models;
 
@@ -16,6 +17,20 @@ namespace WaxIPTV.Services
     /// </summary>
     public static class Xmltv
     {
+        private static string RemoveInvalidXmlChars(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+                return string.Empty;
+
+            var sb = new StringBuilder(text.Length);
+            foreach (var ch in text)
+            {
+                if (XmlConvert.IsXmlChar(ch))
+                    sb.Append(ch);
+            }
+            return sb.ToString();
+        }
+
         /// <summary>
         /// Parses an XMLTV document and returns a dictionary of channel identifiers
         /// to display names along with a list of programme entries.  Parsing is
@@ -30,6 +45,8 @@ namespace WaxIPTV.Services
             if (string.IsNullOrWhiteSpace(xml))
                 return (new Dictionary<string, string>(), new List<Programme>());
 
+            xml = RemoveInvalidXmlChars(xml);
+
             var names = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             var programmes = new List<Programme>();
 
@@ -38,7 +55,8 @@ namespace WaxIPTV.Services
             {
                 IgnoreWhitespace = true,
                 IgnoreComments = true,
-                DtdProcessing = DtdProcessing.Ignore
+                DtdProcessing = DtdProcessing.Ignore,
+                CheckCharacters = false
             };
             using var xr = XmlReader.Create(sr, settings);
 
@@ -129,12 +147,15 @@ namespace WaxIPTV.Services
             if (string.IsNullOrWhiteSpace(xml))
                 yield break;
 
+            xml = RemoveInvalidXmlChars(xml);
+
             using var sr = new StringReader(xml);
             var settings = new XmlReaderSettings
             {
                 IgnoreWhitespace = true,
                 IgnoreComments = true,
-                DtdProcessing = DtdProcessing.Ignore
+                DtdProcessing = DtdProcessing.Ignore,
+                CheckCharacters = false
             };
             using var xr = XmlReader.Create(sr, settings);
 

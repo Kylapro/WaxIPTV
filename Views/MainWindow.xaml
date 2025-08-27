@@ -23,10 +23,10 @@
         <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4">
             <!-- Shortcut buttons on the left -->
             <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Margin="0,0,8,0">
-                <!-- EPG Guide button -->
-                <Button Width="32" Height="32" Margin="0,0,4,0" ToolTip="EPG Guide"
-                        Click="GuideMenu_Click" Style="{DynamicResource AccentButton}">
-                    <TextBlock FontFamily="Segoe MDL2 Assets" FontSize="16" Text="&#xE8A7;"/>
+                <!-- EPG guide button -->
+                <Button Width="32" Height="32" ToolTip="EPG Guide"
+                        Click="EpgGuide_Click" Style="{DynamicResource AccentButton}">
+                    <TextBlock FontFamily="Segoe MDL2 Assets" FontSize="16" Text="&#xE12B;"/>
                 </Button>
                 <!-- Settings button -->
                 <Button Width="32" Height="32" ToolTip="Settings"
