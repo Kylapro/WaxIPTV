@@ -135,13 +135,23 @@ namespace WaxIPTV.Views
             foreach (var ch in channels)
             {
                 token.ThrowIfCancellationRequested();
+
+                // Build EPG blocks off the UI thread to avoid freezing when many
+                // channels are present.  BuildBlocks performs CPU-bound work that
+                // can take noticeable time with large EPGs, so run it on the thread
+                // pool and await the result here before updating the UI.
+                var blocks = await Task.Run(() => BuildBlocks(ch), token);
+
                 var row = new ChannelEpgRow
                 {
                     Channel = ch,
-                    Blocks = BuildBlocks(ch)
+                    Blocks = blocks
                 };
                 _rows.Add(row);
-                await Task.Delay(10, token); // yield briefly to UI thread
+
+                // Yield briefly to the UI thread so the interface remains
+                // responsive while rows are added incrementally.
+                await Task.Delay(10, token);
             }
         }
 
