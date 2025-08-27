@@ -22,6 +22,7 @@ namespace WaxIPTV.Views
         private const int TimelineHours = 12;
         private const double PixelsPerMinute = 2.0;
         private const double MinBlockWidth = 20.0;
+        private const int ChannelLoadDelayMs = 1000;
         public static readonly double TimelineWidth = Math.Round(TimelineHours * 60 * PixelsPerMinute);
 
         private readonly List<Channel> _channels;
@@ -130,21 +131,15 @@ namespace WaxIPTV.Views
 
         private async Task LoadRowsAsync(List<Channel> channels, CancellationToken token)
         {
-            const int batchSize = 20;
-            for (int i = 0; i < channels.Count; i += batchSize)
+            foreach (var ch in channels)
             {
                 token.ThrowIfCancellationRequested();
-                var batch = channels
-                    .Skip(i)
-                    .Take(batchSize)
-                    .Select(ch => new ChannelEpgRow
-                    {
-                        Channel = ch,
-                        Blocks = BuildBlocks(ch)
-                    });
-                foreach (var row in batch)
-                    _rows.Add(row);
-                await Task.Delay(100, token);
+                _rows.Add(new ChannelEpgRow
+                {
+                    Channel = ch,
+                    Blocks = BuildBlocks(ch)
+                });
+                await Task.Delay(ChannelLoadDelayMs, token);
             }
         }
 
