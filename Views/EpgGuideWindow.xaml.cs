@@ -59,6 +59,7 @@ namespace WaxIPTV.Views
         {
             var groups = _channels
                 .Select(c => string.IsNullOrWhiteSpace(c.Group) ? "Ungrouped" : c.Group!)
+                .Where(g => !string.Equals(g, "All Channels", StringComparison.OrdinalIgnoreCase))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .OrderBy(g => g)
                 .ToList();
