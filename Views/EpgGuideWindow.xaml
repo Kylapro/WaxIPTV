@@ -11,7 +11,7 @@
         WindowStartupLocation="CenterOwner">
     <!--
         This window renders a simple EPG guide.  The guide displays a
-        six‑hour timeline for each channel along with basic
+        twelve‑hour timeline for each channel along with basic
         playback controls.  Channels are loaded from the main window
         so that the guide can reuse the same playlist and EPG data.  A
         search bar and group filter enable quick filtering of the
@@ -54,20 +54,54 @@
                 CornerRadius="{DynamicResource ThemeCornerRadius}"
                 Padding="8"
                 Margin="8,0,8,0"
-                Visibility="Collapsed"
                 x:Name="InfoPanel">
             <StackPanel>
-                <TextBlock x:Name="InfoTitle" FontWeight="Bold" FontSize="16" Margin="0,0,0,4"/>
-                <TextBlock x:Name="InfoTime" Margin="0,0,0,4"/>
-                <TextBlock x:Name="InfoDesc" TextWrapping="Wrap" Margin="0,0,0,8"/>
-                <Button x:Name="InfoPlayButton" Content="Play" Width="80" Click="InfoPlayButton_Click" Style="{DynamicResource AccentButton}"/>
+                <TextBlock x:Name="InfoPlaceholder" Text="Select a programme to view details."/>
+                <TextBlock x:Name="InfoTitle" FontWeight="Bold" FontSize="16" Margin="0,0,0,4" Visibility="Collapsed"/>
+                <TextBlock x:Name="InfoTime" Margin="0,0,0,4" Visibility="Collapsed"/>
+                <TextBlock x:Name="InfoDesc" TextWrapping="Wrap" Margin="0,0,0,8" Visibility="Collapsed"/>
+                <Button x:Name="InfoPlayButton" Content="Play" Width="80" Click="InfoPlayButton_Click" Style="{DynamicResource AccentButton}" Visibility="Collapsed"/>
             </StackPanel>
         </Border>
 
+        <!-- Timeline header showing local times -->
+        <Grid DockPanel.Dock="Top" Margin="8,0,8,4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="200"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Border Grid.Column="0"/>
+            <ScrollViewer Grid.Column="1"
+                          x:Name="TimelineHeaderScroll"
+                          HorizontalScrollBarVisibility="Hidden"
+                          VerticalScrollBarVisibility="Hidden">
+                <ItemsControl x:Name="TimelineHeader">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" IsItemsHost="True"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Width="{Binding Width}"
+                                   BorderBrush="{DynamicResource DividerBrush}"
+                                   BorderThickness="0,0,1,0">
+                                <TextBlock Text="{Binding Label}"
+                                           HorizontalAlignment="Center"
+                                           Foreground="{DynamicResource TextBrush}"/>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Grid>
+
         <!-- Main guide area: list of channels and their programmes -->
-        <ScrollViewer HorizontalScrollBarVisibility="Auto"
+        <ScrollViewer x:Name="GuideScroll"
+                      HorizontalScrollBarVisibility="Auto"
                       VerticalScrollBarVisibility="Auto"
-                      Margin="8">
+                      Margin="8"
+                      ScrollChanged="GuideScroll_ScrollChanged">
             <ItemsControl x:Name="TimelineList"
                           VirtualizingStackPanel.IsVirtualizing="True"
                           VirtualizingStackPanel.VirtualizationMode="Recycling">
@@ -86,7 +120,7 @@
                                     <TextBlock Text="{Binding Channel.Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                                 </StackPanel>
                                 <!-- Timeline for this channel -->
-                                <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Hidden">
+                                <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Hidden" ScrollChanged="TimelineScroll_ScrollChanged">
                                     <ItemsControl ItemsSource="{Binding Segments}">
                                         <ItemsControl.ItemsPanel>
                                             <ItemsPanelTemplate>
@@ -100,7 +134,8 @@
                                                        Height="40"
                                                        Margin="1,0"
                                                        Background="{Binding Background}"
-                                                       MouseLeftButtonDown="Segment_MouseLeftButtonDown">
+                                                       MouseLeftButtonDown="Segment_MouseLeftButtonDown"
+                                                       RequestBringIntoView="Segment_RequestBringIntoView">
                                                     <TextBlock Text="{Binding Title}" VerticalAlignment="Center" Padding="2" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource TextBrush}"/>
                                                 </Border>
                                             </DataTemplate>

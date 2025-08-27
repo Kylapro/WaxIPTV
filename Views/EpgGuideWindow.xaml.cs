@@ -14,7 +14,7 @@ namespace WaxIPTV.Views
 {
     /// <summary>
     /// Interaction logic for EpgGuideWindow.xaml.  This window displays a
-    /// six‑hour timeline for each channel using programme data loaded
+    /// twelve‑hour timeline for each channel using programme data loaded
     /// by the main window.  Users can filter channels via a search
     /// box and group selector.  Selecting a programme shows its
     /// details in the information panel and exposes a play button.
@@ -28,13 +28,14 @@ namespace WaxIPTV.Views
         private Dictionary<string, List<Programme>> _programmes;
         private string _searchTerm = string.Empty;
         private string _selectedGroup = "All";
-        // Width assigned to represent six hours of programmes.  The
+        // Width assigned to represent twelve hours of programmes.  The
         // timeline uses this base value to compute the width of each
         // segment relative to its duration (minutes).  You can adjust
         // this constant to increase or decrease the overall scale of
-        // the timeline.  Six hours = 360 minutes.
-        private const double TimelineBaseWidth = 720.0;
+        // the timeline.  Twelve hours = 720 minutes.
+        private const double TimelineBaseWidth = 1440.0;
         private readonly double _minuteWidth;
+        private DateTimeOffset _timelineStartLocal;
         private readonly Brush _programmeBrush;
         private readonly Brush _blankBrush;
 
@@ -61,10 +62,16 @@ namespace WaxIPTV.Views
             public Brush Background { get; init; } = Brushes.Transparent;
         }
 
+        private class TimeHeaderItem
+        {
+            public string Label { get; init; } = string.Empty;
+            public double Width { get; init; }
+        }
+
         /// <summary>
         /// Model representing a single channel row in the guide.  It
         /// encapsulates the channel metadata and the collection of
-        /// segments comprising its six‑hour timeline.  The timeline
+        /// segments comprising its twelve‑hour timeline.  The timeline
         /// updates when filtering or when the EPG is refreshed.
         /// </summary>
         private class ChannelTimelineModel
@@ -92,7 +99,7 @@ namespace WaxIPTV.Views
             _channels = channels;
             _programmes = programmes;
             // Compute the width of each minute based on the timeline base width
-            _minuteWidth = TimelineBaseWidth / 360.0;
+            _minuteWidth = TimelineBaseWidth / 720.0;
             // Resolve brushes from the current theme to match the main UI
             _programmeBrush = TryFindResource("AccentBrush") as Brush ?? Brushes.DarkBlue;
             _blankBrush = TryFindResource("DividerBrush") as Brush ?? Brushes.LightGray;
@@ -198,6 +205,8 @@ namespace WaxIPTV.Views
         /// </summary>
         private void BuildTimelines()
         {
+            _timelineStartLocal = DateTimeOffset.Now;
+            BuildTimelineHeader();
             // Cancel any previously running timeline build and start a new one.  This ensures
             // that only the latest search/group filter takes effect.  Without
             // cancellation, multiple asynchronous builders may compete to update
@@ -206,6 +215,24 @@ namespace WaxIPTV.Views
             _buildCts = new System.Threading.CancellationTokenSource();
             var token = _buildCts.Token;
             _ = BuildTimelinesAsync(token);
+        }
+
+        private void BuildTimelineHeader()
+        {
+            var items = new ObservableCollection<TimeHeaderItem>();
+            var hourWidth = _minuteWidth * 60.0;
+            var current = _timelineStartLocal;
+            for (int i = 0; i < 12; i++)
+            {
+                items.Add(new TimeHeaderItem
+                {
+                    Label = current.ToString("t", CultureInfo.CurrentCulture),
+                    Width = hourWidth
+                });
+                current = current.AddHours(1);
+            }
+            TimelineHeader.ItemsSource = items;
+            TimelineHeaderScroll.ScrollToHorizontalOffset(0);
         }
 
         /// <summary>
@@ -258,7 +285,7 @@ namespace WaxIPTV.Views
                     // Build the segment list synchronously.  This method is
                     // relatively lightweight but could be executed on a
                     // background thread if necessary.  It computes gaps and
-                    // programmes within the six‑hour window.
+                    // programmes within the twelve‑hour window.
                     var segs = BuildSegmentsForChannel(ch);
                     var model = new ChannelTimelineModel
                     {
@@ -286,7 +313,7 @@ namespace WaxIPTV.Views
         }
 
         /// <summary>
-        /// Constructs the six‑hour timeline segments for a given channel.  A
+        /// Constructs the twelve‑hour timeline segments for a given channel.  A
         /// blank segment is inserted for any gaps where no programme
         /// overlaps with the timeline window.  Programme segments are
         /// drawn using the accent brush while blank segments use the
@@ -295,9 +322,9 @@ namespace WaxIPTV.Views
         private List<SegmentModel> BuildSegmentsForChannel(Channel channel)
         {
             var segments = new List<SegmentModel>();
-            // Determine the time window: from now to six hours ahead
-            var start = DateTimeOffset.UtcNow;
-            var end = start.AddHours(6);
+            // Determine the time window: from the captured start to twelve hours ahead
+            var start = _timelineStartLocal.ToUniversalTime();
+            var end = start.AddHours(12);
             // Find programmes for this channel and sort them
             List<Programme> progs;
             if (!_programmes.TryGetValue(channel.Id, out progs))
@@ -361,6 +388,27 @@ namespace WaxIPTV.Views
             return segments;
         }
 
+        private void TimelineScroll_ScrollChanged(object sender, ScrollChangedEventArgs e)
+        {
+            if (e.HorizontalChange != 0)
+            {
+                TimelineHeaderScroll.ScrollToHorizontalOffset(e.HorizontalOffset);
+            }
+        }
+
+        private void GuideScroll_ScrollChanged(object sender, ScrollChangedEventArgs e)
+        {
+            if (e.HorizontalChange != 0)
+            {
+                TimelineHeaderScroll.ScrollToHorizontalOffset(e.HorizontalOffset);
+            }
+        }
+
+        private void Segment_RequestBringIntoView(object sender, RequestBringIntoViewEventArgs e)
+        {
+            e.Handled = true;
+        }
+
         /// <summary>
         /// Handles mouse left button down on programme segments.  If the user
         /// double‑clicks, the associated channel starts playing immediately via
@@ -391,12 +439,25 @@ namespace WaxIPTV.Views
                 // Single click: show or hide programme info
                 if (seg.Programme == null)
                 {
-                    InfoPanel.Visibility = Visibility.Collapsed;
+                    InfoPanel.Visibility = Visibility.Visible;
+                    InfoPlaceholder.Visibility = Visibility.Visible;
+                    InfoTitle.Visibility = Visibility.Collapsed;
+                    InfoTime.Visibility = Visibility.Collapsed;
+                    InfoDesc.Visibility = Visibility.Collapsed;
+                    InfoPlayButton.Visibility = Visibility.Collapsed;
+                    InfoTitle.Text = string.Empty;
+                    InfoTime.Text = string.Empty;
+                    InfoDesc.Text = string.Empty;
                     InfoPlayButton.Tag = null;
                     return;
                 }
                 var prog = seg.Programme;
                 InfoPanel.Visibility = Visibility.Visible;
+                InfoPlaceholder.Visibility = Visibility.Collapsed;
+                InfoTitle.Visibility = Visibility.Visible;
+                InfoTime.Visibility = Visibility.Visible;
+                InfoDesc.Visibility = Visibility.Visible;
+                InfoPlayButton.Visibility = Visibility.Visible;
                 InfoTitle.Text = prog.Title;
                 var localStart = prog.StartUtc.ToLocalTime().DateTime;
                 var localEnd = prog.EndUtc.ToLocalTime().DateTime;
