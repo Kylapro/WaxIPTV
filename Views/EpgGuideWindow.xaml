@@ -97,9 +97,11 @@
         </Grid>
 
         <!-- Main guide area: list of channels and their programmes -->
-        <ScrollViewer HorizontalScrollBarVisibility="Auto"
+        <ScrollViewer x:Name="GuideScroll"
+                      HorizontalScrollBarVisibility="Auto"
                       VerticalScrollBarVisibility="Auto"
-                      Margin="8">
+                      Margin="8"
+                      ScrollChanged="GuideScroll_ScrollChanged">
             <ItemsControl x:Name="TimelineList"
                           VirtualizingStackPanel.IsVirtualizing="True"
                           VirtualizingStackPanel.VirtualizationMode="Recycling">
@@ -132,7 +134,8 @@
                                                        Height="40"
                                                        Margin="1,0"
                                                        Background="{Binding Background}"
-                                                       MouseLeftButtonDown="Segment_MouseLeftButtonDown">
+                                                       MouseLeftButtonDown="Segment_MouseLeftButtonDown"
+                                                       RequestBringIntoView="Segment_RequestBringIntoView">
                                                     <TextBlock Text="{Binding Title}" VerticalAlignment="Center" Padding="2" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource TextBrush}"/>
                                                 </Border>
                                             </DataTemplate>

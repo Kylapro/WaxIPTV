@@ -396,6 +396,19 @@ namespace WaxIPTV.Views
             }
         }
 
+        private void GuideScroll_ScrollChanged(object sender, ScrollChangedEventArgs e)
+        {
+            if (e.HorizontalChange != 0)
+            {
+                TimelineHeaderScroll.ScrollToHorizontalOffset(e.HorizontalOffset);
+            }
+        }
+
+        private void Segment_RequestBringIntoView(object sender, RequestBringIntoViewEventArgs e)
+        {
+            e.Handled = true;
+        }
+
         /// <summary>
         /// Handles mouse left button down on programme segments.  If the user
         /// double‑clicks, the associated channel starts playing immediately via
