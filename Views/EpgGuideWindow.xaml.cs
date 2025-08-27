@@ -426,12 +426,25 @@ namespace WaxIPTV.Views
                 // Single click: show or hide programme info
                 if (seg.Programme == null)
                 {
-                    InfoPanel.Visibility = Visibility.Collapsed;
+                    InfoPanel.Visibility = Visibility.Visible;
+                    InfoPlaceholder.Visibility = Visibility.Visible;
+                    InfoTitle.Visibility = Visibility.Collapsed;
+                    InfoTime.Visibility = Visibility.Collapsed;
+                    InfoDesc.Visibility = Visibility.Collapsed;
+                    InfoPlayButton.Visibility = Visibility.Collapsed;
+                    InfoTitle.Text = string.Empty;
+                    InfoTime.Text = string.Empty;
+                    InfoDesc.Text = string.Empty;
                     InfoPlayButton.Tag = null;
                     return;
                 }
                 var prog = seg.Programme;
                 InfoPanel.Visibility = Visibility.Visible;
+                InfoPlaceholder.Visibility = Visibility.Collapsed;
+                InfoTitle.Visibility = Visibility.Visible;
+                InfoTime.Visibility = Visibility.Visible;
+                InfoDesc.Visibility = Visibility.Visible;
+                InfoPlayButton.Visibility = Visibility.Visible;
                 InfoTitle.Text = prog.Title;
                 var localStart = prog.StartUtc.ToLocalTime().DateTime;
                 var localEnd = prog.EndUtc.ToLocalTime().DateTime;

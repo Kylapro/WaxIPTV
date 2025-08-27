@@ -54,13 +54,13 @@
                 CornerRadius="{DynamicResource ThemeCornerRadius}"
                 Padding="8"
                 Margin="8,0,8,0"
-                Visibility="Collapsed"
                 x:Name="InfoPanel">
             <StackPanel>
-                <TextBlock x:Name="InfoTitle" FontWeight="Bold" FontSize="16" Margin="0,0,0,4"/>
-                <TextBlock x:Name="InfoTime" Margin="0,0,0,4"/>
-                <TextBlock x:Name="InfoDesc" TextWrapping="Wrap" Margin="0,0,0,8"/>
-                <Button x:Name="InfoPlayButton" Content="Play" Width="80" Click="InfoPlayButton_Click" Style="{DynamicResource AccentButton}"/>
+                <TextBlock x:Name="InfoPlaceholder" Text="Select a programme to view details."/>
+                <TextBlock x:Name="InfoTitle" FontWeight="Bold" FontSize="16" Margin="0,0,0,4" Visibility="Collapsed"/>
+                <TextBlock x:Name="InfoTime" Margin="0,0,0,4" Visibility="Collapsed"/>
+                <TextBlock x:Name="InfoDesc" TextWrapping="Wrap" Margin="0,0,0,8" Visibility="Collapsed"/>
+                <Button x:Name="InfoPlayButton" Content="Play" Width="80" Click="InfoPlayButton_Click" Style="{DynamicResource AccentButton}" Visibility="Collapsed"/>
             </StackPanel>
         </Border>
 
