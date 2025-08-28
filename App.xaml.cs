@@ -3,6 +3,7 @@ using WaxIPTV.Models;
 using WaxIPTV.Services;
 using WaxIPTV.Services.Logging;
 using WaxIPTV.Views;
+using WaxIPTV.Theming;
 
 namespace WaxIPTV
 {
@@ -25,6 +26,11 @@ namespace WaxIPTV
             // Load settings and configure logging before proceeding
             _settingsService.Load();
             var settings = _settingsService.Settings;
+
+            // Apply the appropriate theme before any windows are shown so the
+            // initial UI reflects the current configuration and system theme.
+            Theming.ThemeManager.ApplyTheme(settings, Resources);
+
             AppLog.Init(settings);
             AppLog.Logger.Information("Application starting");
 
@@ -90,7 +96,7 @@ namespace WaxIPTV
         {
             try
             {
-                var themePath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "theme.json");
+                var themePath = ThemeManager.CurrentThemePath;
                 var directory = System.IO.Path.GetDirectoryName(themePath);
                 var filename = System.IO.Path.GetFileName(themePath);
                 if (directory == null || filename == null)

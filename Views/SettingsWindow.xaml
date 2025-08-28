@@ -209,6 +209,9 @@
                                     Command="{Binding ResetThemeCommand}"/>
                             <CheckBox Content="Live apply"
                                       IsChecked="{Binding AutoApplyTheme}"/>
+                            <CheckBox Content="Match system"
+                                      Margin="8,0,0,0"
+                                      IsChecked="{Binding UseSystemTheme}"/>
                             <Button Content="Apply now"
                                     Command="{Binding ApplyThemeCommand}"/>
                         </StackPanel>

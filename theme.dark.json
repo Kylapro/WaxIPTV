@@ -1,0 +1,15 @@
+{
+  "colors": {
+    "bg": "#0B0B0F",
+    "text": "#FFFFFF",
+    "surface": "#1F1F27",
+    "accent": "#5B8CFF"
+  },
+  "typography": {
+    "fontFamily": "Segoe UI",
+    "sizeBase": 14
+  },
+  "shape": {
+    "radius": 8
+  }
+}
