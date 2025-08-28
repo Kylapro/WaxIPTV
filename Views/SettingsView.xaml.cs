@@ -23,7 +23,7 @@ namespace WaxIPTV.Views
             // Load the current theme JSON into the text box on startup
             try
             {
-                var themePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "theme.json");
+                var themePath = Theming.ThemeManager.CurrentThemePath;
                 if (File.Exists(themePath))
                 {
                     ThemeJsonEditor.Text = File.ReadAllText(themePath);

@@ -95,5 +95,27 @@ namespace WaxIPTV.Models
         /// </summary>
         [JsonPropertyName("logMaxFileBytes")]
         public long LogMaxFileBytes { get; set; } = 5 * 1024 * 1024; // 5 MB
+
+        /// <summary>
+        /// When true, the application will detect whether Windows is using a
+        /// light or dark theme and load the corresponding theme file
+        /// automatically.
+        /// </summary>
+        [JsonPropertyName("useSystemTheme")]
+        public bool UseSystemTheme { get; set; } = true;
+
+        /// <summary>
+        /// Path to the theme JSON file used when the light theme is active.
+        /// Defaults to <c>theme.json</c> in the application directory.
+        /// </summary>
+        [JsonPropertyName("lightThemePath")]
+        public string? LightThemePath { get; set; } = "theme.json";
+
+        /// <summary>
+        /// Path to the theme JSON file used when the dark theme is active.
+        /// Defaults to <c>theme.dark.json</c> in the application directory.
+        /// </summary>
+        [JsonPropertyName("darkThemePath")]
+        public string? DarkThemePath { get; set; } = "theme.dark.json";
     }
 }

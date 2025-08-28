@@ -89,6 +89,12 @@ namespace WaxIPTV.ViewModels
         [ObservableProperty]
         private bool showAdvancedJson;
 
+        // Determines whether the application should match the Windows light
+        // or dark theme automatically.  When enabled, the theme file is
+        // chosen based on the current system setting.
+        [ObservableProperty]
+        private bool useSystemTheme = true;
+
         public SettingsViewModel(SettingsService service, AppSettings settings)
         {
             _service = service;
@@ -101,8 +107,9 @@ namespace WaxIPTV.ViewModels
             playlistUrl = settings.PlaylistUrl;
             xmltvUrl    = settings.XmltvUrl;
             epgRefreshHours = settings.EpgRefreshHours;
+            useSystemTheme = settings.UseSystemTheme;
 
-            var themeFile = Path.Combine(AppContext.BaseDirectory, "theme.json");
+            var themeFile = ThemeManager.CurrentThemePath;
             if (File.Exists(themeFile))
             {
                 themeJson = File.ReadAllText(themeFile);
@@ -335,14 +342,15 @@ namespace WaxIPTV.ViewModels
             _settings.PlaylistUrl = playlistUrl;
             _settings.XmltvUrl    = xmltvUrl;
             _settings.EpgRefreshHours = epgRefreshHours;
+            _settings.UseSystemTheme = useSystemTheme;
 
             // Save settings and theme
             _service.Save(_settings);
             UpdateThemeJson();
-            File.WriteAllText(Path.Combine(AppContext.BaseDirectory, "theme.json"), themeJson);
+            File.WriteAllText(ThemeManager.CurrentThemePath, themeJson);
 
-            // Apply the theme immediately
-            ApplyTheme();
+            // Apply the theme immediately and update the current theme path
+            ThemeManager.ApplyTheme(_settings, Application.Current.Resources);
 
             try
             {
